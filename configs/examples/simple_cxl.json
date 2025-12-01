@@ -1,0 +1,38 @@
+{
+  "topology": {
+    "name": "Simple CXL Setup",
+    "description": "One CXL device directly connected to host",
+    "root_complex": {
+      "id": "RC0",
+      "local_dram_size_gb": 64,
+      "local_dram_latency_ns": 90
+    },
+    "cxl_devices": [
+      {
+        "id": "CXL0",
+        "type": "Type3",
+        "capacity_gb": 128,
+        "link_gen": "Gen5",
+        "link_width": "x16",
+        "bandwidth_gbps": 64,
+        "base_latency_ns": 170
+      }
+    ],
+    "connections": [
+      {
+        "from": "RC0",
+        "to": "CXL0",
+        "link": "Gen5x16"
+      }
+    ]
+  },
+  "memory_policy": {
+    "type": "first_touch",
+    "local_first_gb": 32
+  },
+  "simulation": {
+    "epoch_ms": 10,
+    "enable_congestion_model": true,
+    "enable_mlp_optimization": false
+  }
+}

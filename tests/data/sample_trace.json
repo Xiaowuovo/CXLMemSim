@@ -1,0 +1,25 @@
+{
+  "metadata": {
+    "source": "mock_generator",
+    "duration_ms": 1000,
+    "sample_rate_hz": 10000
+  },
+  "events": [
+    {
+      "timestamp": 1000000000,
+      "addr": 16777216,
+      "tid": 1234,
+      "cpu": 0,
+      "l3_miss": true,
+      "latency_ns": 150
+    },
+    {
+      "timestamp": 1000001000,
+      "addr": 16781312,
+      "tid": 1234,
+      "cpu": 0,
+      "l3_miss": false,
+      "latency_ns": 10
+    }
+  ]
+}

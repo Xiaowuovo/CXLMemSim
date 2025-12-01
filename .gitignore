@@ -1,0 +1,44 @@
+# Build artifacts
+build/
+build-*/
+cmake-build-*/
+*.o
+*.a
+*.so
+*.so.*
+*.dylib
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.vs/
+
+# BPF
+*.bpf.o
+vmlinux.h
+
+# Test outputs
+test_results/
+*.log
+Testing/
+
+# Perf data
+perf.data
+perf.data.old
+
+# Qt
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+*.qm
+
+# User config
+local_config.json
+user_settings.ini
+
+# OS
+.DS_Store
+Thumbs.db
