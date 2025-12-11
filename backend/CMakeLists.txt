@@ -4,6 +4,9 @@
 set(BACKEND_SOURCES
     src/tracer/tracer_factory.cpp
     src/tracer/mock_tracer.cpp
+    src/topology/topology_graph.cpp
+    src/analyzer/latency_model.cpp
+    src/analyzer/timing_analyzer.cpp
 )
 
 # Add PEBS tracer only if supported

@@ -9,7 +9,7 @@ if(NOT GTest_FOUND)
     return()
 endif()
 
-# Test executable
+# Test executables
 add_executable(test_tracer
     test_tracer.cpp
 )
@@ -22,8 +22,33 @@ target_link_libraries(test_tracer
         GTest::gtest_main
 )
 
+add_executable(test_config_parser
+    test_config_parser.cpp
+)
+
+target_link_libraries(test_config_parser
+    PRIVATE
+        common
+        GTest::gtest
+        GTest::gtest_main
+)
+
+add_executable(test_integration
+    test_integration.cpp
+)
+
+target_link_libraries(test_integration
+    PRIVATE
+        backend_core
+        common
+        GTest::gtest
+        GTest::gtest_main
+)
+
 # Register tests
 include(GoogleTest)
 gtest_discover_tests(test_tracer)
+gtest_discover_tests(test_config_parser)
+gtest_discover_tests(test_integration)
 
 message(STATUS "Tests configured")

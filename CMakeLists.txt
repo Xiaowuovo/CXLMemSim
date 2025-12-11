@@ -56,7 +56,7 @@ endif()
 option(BUILD_GUI "Build Qt GUI frontend" ON)
 
 if(BUILD_GUI)
-    find_package(Qt6 QUIET COMPONENTS Core Widgets Charts)
+    find_package(Qt6 QUIET COMPONENTS Core Widgets Gui)
     if(Qt6_FOUND)
         message(STATUS "✓ Qt6 found - GUI will be built")
         set(CMAKE_AUTOMOC ON)
@@ -64,7 +64,7 @@ if(BUILD_GUI)
         set(CMAKE_AUTOUIC ON)
     else()
         message(WARNING "✗ Qt6 not found - GUI will not be built")
-        message(WARNING "  Install with: sudo apt install qt6-base-dev qt6-tools-dev libqt6charts6-dev")
+        message(WARNING "  Install with: sudo apt install qt6-base-dev qt6-tools-dev")
         set(BUILD_GUI OFF)
     endif()
 endif()
@@ -80,6 +80,10 @@ endif()
 # Main CLI executable (for testing backend)
 add_executable(cxlmemsim main.cpp)
 target_link_libraries(cxlmemsim PRIVATE backend_core common)
+
+# Demo executable
+add_executable(simple_simulation demos/simple_simulation.cpp)
+target_link_libraries(simple_simulation PRIVATE backend_core common)
 
 # Testing
 option(BUILD_TESTS "Build unit tests" ON)

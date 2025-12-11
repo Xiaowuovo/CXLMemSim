@@ -35,22 +35,45 @@ make -j$(nproc)
 ```
 
 ### Physical Server (Production)
+
+**Quick deployment** (automated):
 ```bash
+# One-line deployment
+sudo ./scripts/deploy_physical.sh --auto
+```
+
+**Manual deployment**:
+```bash
+# Install dependencies
+sudo ./scripts/install_dependencies.sh
+
+# Configure perf permissions
+sudo sysctl -w kernel.perf_event_paranoid=1
+
 # Build with PEBS tracer
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j$(nproc)
 
-# Should output: "Using PEBSTracer"
+# Verify PEBS support
 ./cxlmemsim --check-tracer
 ```
 
+📖 **Deployment Guides**:
+- [Quick Start Guide](DEPLOYMENT_QUICKSTART.md) - Fast deployment in 3 steps
+- [Complete Deployment Guide](docs/PHYSICAL_DEPLOYMENT.md) - Detailed instructions
+
 ## Documentation
 
-- [Architecture Design](docs/design/architecture.md)
-- [VM to Physical Migration](planning/vm_to_physical_migration_strategy.md)
-- [API Reference](docs/api/)
-- [User Guide](docs/user_guide/)
+- **Deployment**
+  - [📦 Quick Deployment](DEPLOYMENT_QUICKSTART.md)
+  - [📘 Complete Deployment Guide](docs/PHYSICAL_DEPLOYMENT.md)
+  - [🔄 VM to Physical Migration](planning/vm_to_physical_migration_strategy.md)
+- **Development**
+  - [🏗️ Architecture Design](docs/design/architecture.md)
+  - [📚 API Reference](docs/api/)
+  - [📖 User Guide](docs/user_guide/)
+  - [🚀 Quick Start](QUICKSTART.md)
 
 ## Development Status
 
