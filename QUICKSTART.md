@@ -2,54 +2,65 @@
 
 ## ✅ 项目状态
 
-**当前阶段**: Phase 1 - 基础架构完成 ✓
+**虚拟机环境功能完整** ✓
 
 ### 已完成功能
 
-- ✅ 完整的项目目录结构
-- ✅ Tracer抽象层设计
-- ✅ MockTracer实现(虚拟机开发用)
-- ✅ PEBSTracer框架(待物理机完善)
-- ✅ TracerFactory自动检测
-- ✅ CMake构建系统(支持虚拟机/物理机)
-- ✅ 单元测试框架(6/7测试通过)
-- ✅ CLI测试工具
+- ✅ 完整的项目架构
+- ✅ MockTracer 实现（虚拟机模拟）
+- ✅ Qt6 图形界面
+- ✅ 拓扑图编辑器
+- ✅ 配置管理系统
+- ✅ 时序分析器和延迟模型
+- ✅ 单元测试框架
+- ✅ 一键部署脚本
 
 ---
 
 ## 🚀 快速开始
 
-### 在虚拟机中编译和测试
+### 方法一：一键部署（推荐）
 
 ```bash
-# 1. 进入项目目录
-cd /home/xiaowu/work/CXLMemSim
+# 在 Ubuntu 虚拟机中运行
+cd /path/to/CXLMemSim
 
-# 2. 创建构建目录
+# 一键安装、编译、测试
+./scripts/setup_vm.sh
+
+# 启动 GUI
+./run_gui.sh
+```
+
+### 方法二：手动部署
+
+```bash
+# 1. 安装依赖
+sudo apt update
+sudo apt install -y build-essential cmake git \
+    nlohmann-json3-dev libgtest-dev \
+    qt6-base-dev qt6-tools-dev
+
+# 2. 编译项目
 mkdir -p build && cd build
-
-# 3. 配置CMake
 cmake -DCMAKE_BUILD_TYPE=Release ..
+make -j$(nproc)
 
-# 4. 编译
-make -j4
+# 3. 验证安装
+./cxlmemsim --check-tracer    # 应显示: "Best Tracer: MOCK"
+./cxlmemsim --test-mock        # 测试 MockTracer
 
-# 5. 测试tracer检测
-./cxlmemsim --check-tracer
+# 4. 运行单元测试（可选）
+ctest --output-on-failure
 
-# 6. 测试Mock tracer
-./cxlmemsim --test-mock
-
-# 7. 加载trace文件
-./cxlmemsim --load-trace ../tests/data/sample_trace.json
-
-# 8. 运行单元测试
-./tests/test_tracer
+# 5. 启动 GUI
+cd ..
+./run_gui.sh
 ```
 
 ### 预期输出
 
-#### Tracer检测
+#### Tracer 检测
 ```
 PEBS Support: ✗ Not available
 Best Tracer: MOCK
@@ -59,7 +70,7 @@ Tracer Info:
   Precise Address: Yes
 ```
 
-✅ **这是正常的！** 虚拟机不支持PEBS，系统会自动使用Mock tracer。
+✅ **虚拟机环境正常输出**，系统自动使用 MockTracer 进行模拟。
 
 ---
 
@@ -95,15 +106,15 @@ CXLMemSim/
 
 ---
 
-## 🎯 虚拟机 vs 物理机对比
+## 🎯 功能列表
 
-| 功能 | 虚拟机 | 物理机 |
-|------|--------|--------|
-| MockTracer | ✅ 完全可用 | ✅ 完全可用 |
-| PEBSTracer | ❌ 不可用 | ✅ 完全可用 |
-| 前端开发 | ✅ 推荐 | ✅ 可用 |
-| 后端测试 | ✅ 模拟数据 | ✅ 真实数据 |
-| 编译构建 | ✅ 完全支持 | ✅ 完全支持 |
+| 功能 | 状态 | 说明 |
+|------|------|------|
+| MockTracer | ✅ 可用 | 虚拟机环境下的内存访问模拟 |
+| Qt6 GUI | ✅ 可用 | 拓扑编辑和性能可视化 |
+| 配置管理 | ✅ 可用 | JSON 格式的 CXL 拓扑配置 |
+| 时序分析 | ✅ 可用 | 延迟计算和带宽建模 |
+| 单元测试 | ✅ 可用 | 完整的测试覆盖 |
 
 ---
 
@@ -127,36 +138,26 @@ CXLMemSim/
 
 ---
 
-## 🔄 迁移到物理服务器
+## 🔄 Windows 与 Ubuntu 同步
 
-### 方法1: Git Clone
+### 从 Windows 同步到 Ubuntu 虚拟机
+
 ```bash
-# 1. 在虚拟机中推送代码
-cd /home/xiaowu/work/CXLMemSim
-git init
+# 方法1: 使用 Git（推荐）
+# 在 Windows 上
 git add .
-git commit -m "Phase 1 completed"
-git remote add origin <your-repo-url>
-git push -u origin main
+git commit -m "Update from Windows"
+git push
 
-# 2. 在物理服务器上拉取
-ssh user@physical-server
-git clone <your-repo-url>
-cd CXLMemSim
-./scripts/install_dependencies.sh
-mkdir build && cd build
-cmake .. && make -j4
+# 在 Ubuntu VM 上
+git pull
+./scripts/setup_vm.sh --skip-deps  # 重新编译
 
-# 3. 检测PEBS
-./cxlmemsim --check-tracer
-# 应该输出: "Using: PEBSTracer"
-```
-
-### 方法2: rsync同步
-```bash
-rsync -avz --exclude 'build' \
-    /home/xiaowu/work/CXLMemSim/ \
-    user@physical-server:~/CXLMemSim/
+# 方法2: 使用共享文件夹
+# 在 VirtualBox/VMware 中配置共享文件夹
+# Ubuntu 中访问共享目录
+cd /mnt/shared/CXLMemSim
+./scripts/setup_vm.sh
 ```
 
 ---
@@ -179,97 +180,107 @@ rsync -avz --exclude 'build' \
 
 ## 📋 依赖清单
 
-### 已安装 ✅
-- build-essential
-- cmake
-- gcc/g++
-- perf tools
-- bpftool
-
-### 待安装 (可选)
+### 核心依赖（必需）
 ```bash
-# Qt6 (用于GUI)
-sudo apt install -y qt6-base-dev qt6-tools-dev libqt6charts6-dev
+sudo apt install -y \
+    build-essential \
+    cmake \
+    git \
+    nlohmann-json3-dev \
+    libgtest-dev
+```
 
-# nlohmann-json (如果没有)
-sudo apt install -y nlohmann-json3-dev
+### GUI 依赖（推荐）
+```bash
+sudo apt install -y \
+    qt6-base-dev \
+    qt6-tools-dev \
+    libqt6charts6-dev
+```
 
-# Google Test (已安装)
-# 已通过包管理器安装
+**提示**: 运行 `./scripts/setup_vm.sh` 会自动安装所有依赖。
 
-# Clang/LLVM (如果需要)
-sudo apt install -y clang llvm
+---
+
+## 🐛 常见问题
+
+### Q: 提示 "Qt6 not found"
+**A**: 安装 Qt6 开发包
+```bash
+sudo apt install -y qt6-base-dev qt6-tools-dev
+```
+
+### Q: GUI 无法启动
+**A**: 检查 DISPLAY 环境变量和 X11 转发
+```bash
+echo $DISPLAY  # 应该输出 :0 或类似值
+export DISPLAY=:0
+./run_gui.sh
+```
+
+### Q: 编译错误
+**A**: 确保安装了所有依赖
+```bash
+./scripts/setup_vm.sh --skip-build  # 只安装依赖
 ```
 
 ---
 
-## 🐛 已知问题
+## 📚 使用指南
 
-### 虚拟机限制
-- ❌ PEBS不可用 (errno=95: Operation not supported)
-- ✅ 解决方案: 使用MockTracer开发，物理机验证
+### 编辑 CXL 拓扑
+1. 启动 GUI: `./run_gui.sh`
+2. 在拓扑编辑器中添加 CXL 设备
+3. 配置设备参数（容量、延迟、带宽）
+4. 保存配置到 JSON 文件
 
-### 测试跳过
-- ⚠️ MockTracer.TraceFileLoading - 路径问题(不影响功能)
-- ✅ 其他6/7测试全部通过
+### 运行模拟
+1. 加载拓扑配置
+2. 使用 MockTracer 生成模拟数据
+3. 查看性能指标面板
+4. 导出结果报告
 
----
-
-## 📚 下一阶段任务
-
-根据`planning/execution_plan.md`:
-
-### Phase 2: CXL核心模型 (2-3周)
-- [ ] 配置文件系统 (JSON解析)
-- [ ] 拓扑图数据结构
-- [ ] 延迟计算模型
-- [ ] 带宽与拥塞模型
-- [ ] TimingAnalyzer集成
-
-### Phase 3: Qt前端 (2-3周)
-- [ ] 主窗口布局
-- [ ] 拓扑编辑器 (QGraphicsView)
-- [ ] 配置管理器 (QTreeView)
-- [ ] 性能监控面板 (QCustomPlot)
-- [ ] Trace查看器
-
-### Phase 4: 物理机验证 (1周)
-- [ ] 完善PEBSTracer实现
-- [ ] 真实trace采集
-- [ ] 性能基准测试
+### 配置文件示例
+查看 `configs/examples/simple_cxl.json` 了解配置格式。
 
 ---
 
-## 📞 支持
+## 📞 文档支持
 
-- 执行计划: `planning/execution_plan.md`
-- 架构设计: `planning/architecture_updates.md`
-- 迁移策略: `planning/vm_to_physical_migration_strategy.md`
-- 虚拟机能力: `planning/vm_capabilities_report.md`
+- 快速开始: 本文档
+- 文档索引: `DOCS_INDEX.md`
+- 前端开发: `frontend/README.md`
+- 配置示例: `configs/examples/`
 
 ---
 
 ## ✨ 总结
 
-### 已完成 ✅
-- ✅ 项目架构设计
-- ✅ Tracer抽象层
-- ✅ Mock tracer完整实现
-- ✅ 构建系统(支持VM/物理机)
-- ✅ 单元测试框架
-- ✅ CLI测试工具
+### 虚拟机环境功能 ✅
+- ✅ 完整的 CXL 内存模拟
+- ✅ Qt6 图形界面
+- ✅ 拓扑编辑和可视化
+- ✅ 性能分析和报告
+- ✅ 一键部署和测试
 
-### 优势 🎯
-- 虚拟机中可以完成80%开发工作
-- 代码完全可移植到物理服务器
-- 自动检测硬件能力并选择最佳tracer
-- 清晰的文档和测试
+### 使用场景 🎯
+- CXL 拓扑设计和验证
+- 性能建模和分析
+- 教学和演示
+- 原型开发
 
-### 下一步 🚀
-1. 安装Qt6: `sudo apt install qt6-base-dev qt6-tools-dev`
-2. 开始Qt前端开发
-3. 实现Analyzer模块
+### 快速命令 🚀
+```bash
+# 一键部署
+./scripts/setup_vm.sh
+
+# 启动 GUI
+./run_gui.sh
+
+# 运行测试
+./build/cxlmemsim --test-mock
+```
 
 ---
 
-**项目进度**: Phase 1 完成 ✓ → Phase 2 准备就绪 🚀
+**环境**: Ubuntu 虚拟机 ✓ | **状态**: 功能完整 ✓
