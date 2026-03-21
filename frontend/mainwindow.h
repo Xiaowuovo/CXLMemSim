@@ -15,6 +15,7 @@
 #include <memory>
 #include "config_parser.h"
 #include "analyzer/timing_analyzer.h"
+#include "analyzer/experiment_manager.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -41,15 +42,18 @@ private slots:
     void onSaveConfig();
     void onSaveConfigAs();
     void onExportTopology();
+    void onExportData();        // 导出实验数据
     void onExit();
 
     // Simulation menu actions
     void onStartSimulation();
     void onStopSimulation();
     void onResetSimulation();
+    void onRunExperiments();    // 运行标准实验
 
     // Help menu actions
     void onAbout();
+    void onShowDocs();          // 显示使用文档
 
     // Update handlers
     void updateStatus(const QString& message);

@@ -8,11 +8,15 @@
 #include "widgets/config_tree_widget.h"
 #include "widgets/metrics_panel.h"
 
-#include <QMenuBar>
-#include <QToolBar>
-#include <QStatusBar>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QToolBar>
+#include <QMenuBar>
+#include <QTimer>
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QFile>
+#include <fstream>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QSettings>
@@ -384,4 +388,112 @@ void MainWindow::saveConfig(const QString& filename) {
 
     updateStatus("Configuration saved: " + filename);
     logView_->append("[INFO] Saved configuration: " + filename);
+}
+
+void MainWindow::onExportData() {
+    if (!analyzer_ || !simulationRunning_) {
+        QMessageBox::information(this, "提示", 
+            "请先运行模拟，然后再导出实验数据。");
+        return;
+    }
+    
+    QString filename = QFileDialog::getSaveFileName(
+        this,
+        "导出实验数据",
+        "experiment_data.csv",
+        "CSV Files (*.csv);;JSON Files (*.json);;All Files (*)"
+    );
+    
+    if (filename.isEmpty()) {
+        return;
+    }
+    
+    // 获取当前统计数据
+    const auto& stats = analyzer_->get_current_stats();
+    
+    try {
+        if (filename.endsWith(".csv")) {
+            // 导出为CSV格式
+            std::ofstream file(filename.toStdString());
+            file << "指标,数值\n";
+            file << "Epoch编号," << stats.epoch_number << "\n";
+            file << "总访问次数," << stats.total_accesses << "\n";
+            file << "CXL访问次数," << stats.cxl_accesses << "\n";
+            file << "平均延迟(ns)," << stats.avg_latency_ns << "\n";
+            file << "最大延迟(ns)," << stats.max_latency_ns << "\n";
+            file << "最小延迟(ns)," << stats.min_latency_ns << "\n";
+            file << "总注入延迟(ns)," << stats.total_injected_delay_ns << "\n";
+            file.close();
+            
+            updateStatus("数据已导出到: " + filename);
+            logView_->append("[INFO] 实验数据已导出: " + filename);
+        } else {
+            // 导出为JSON格式
+            QJsonObject json;
+            json["epoch_number"] = static_cast<qint64>(stats.epoch_number);
+            json["total_accesses"] = static_cast<qint64>(stats.total_accesses);
+            json["cxl_accesses"] = static_cast<qint64>(stats.cxl_accesses);
+            json["avg_latency_ns"] = stats.avg_latency_ns;
+            json["max_latency_ns"] = stats.max_latency_ns;
+            json["min_latency_ns"] = stats.min_latency_ns;
+            json["total_injected_delay_ns"] = stats.total_injected_delay_ns;
+            
+            QJsonDocument doc(json);
+            QFile file(filename);
+            if (file.open(QIODevice::WriteOnly)) {
+                file.write(doc.toJson());
+                file.close();
+                updateStatus("数据已导出到: " + filename);
+                logView_->append("[INFO] 实验数据已导出: " + filename);
+            }
+        }
+    } catch (const std::exception& e) {
+        QMessageBox::critical(this, "错误", 
+            QString("导出失败: %1").arg(e.what()));
+        logView_->append("[ERROR] 导出数据失败");
+    }
+}
+
+void MainWindow::onRunExperiments() {
+    QMessageBox::information(this, "运行标准实验",
+        "<h3>标准实验集</h3>"
+        "<p>系统提供了11组预设的标准实验配置：</p>"
+        "<ul>"
+        "<li><b>延迟敏感性分析</b>（4组）：评估不同CXL延迟的影响</li>"
+        "<li><b>带宽瓶颈分析</b>（3组）：评估带宽对性能的影响</li>"
+        "<li><b>拥塞模型对比</b>（2组）：验证拥塞模型的效果</li>"
+        "<li><b>MLP优化效果</b>（2组）：评估内存级并行优化</li>"
+        "</ul>"
+        "<p><b>运行方式：</b></p>"
+        "<p>请在终端中执行以下命令：</p>"
+        "<pre>./scripts/run_experiments.sh</pre>"
+        "<p>实验结果将保存在 <code>results/</code> 目录</p>"
+        "<p>然后使用Python脚本生成图表：</p>"
+        "<pre>python3 scripts/plot_results.py results/experiment_results.csv</pre>"
+    );
+    
+    logView_->append("[INFO] 请参考标准实验配置: configs/standard_experiments.json");
+}
+
+void MainWindow::onShowDocs() {
+    QMessageBox::information(this, "使用文档",
+        "<h3>CXLMemSim 文档索引</h3>"
+        "<p><b>核心文档：</b></p>"
+        "<ul>"
+        "<li><b>README.md</b> - 项目概览和快速开始</li>"
+        "<li><b>QUICKSTART.md</b> - 详细的快速开始指南</li>"
+        "<li><b>DOCS_INDEX.md</b> - 完整文档索引</li>"
+        "<li><b>毕设撰写指导说明书.md</b> - 论文撰写指南（2万字）</li>"
+        "<li><b>项目优化总结.md</b> - 项目优化内容总结</li>"
+        "</ul>"
+        "<p><b>配置文件：</b></p>"
+        "<ul>"
+        "<li><b>configs/examples/simple_cxl.json</b> - 简单示例配置</li>"
+        "<li><b>configs/standard_experiments.json</b> - 标准实验配置（11组）</li>"
+        "</ul>"
+        "<p><b>在线帮助：</b></p>"
+        "<p>项目目录中的所有文档均可在文本编辑器中打开查看。</p>"
+    );
+    
+    logView_->append("[INFO] 请参考项目根目录下的文档文件");
 }
