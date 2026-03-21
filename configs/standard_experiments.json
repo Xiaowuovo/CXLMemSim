@@ -1,0 +1,150 @@
+{
+  "experiment_set": {
+    "name": "CXL内存模拟标准实验集",
+    "description": "用于毕业设计的标准实验配置，涵盖延迟、带宽、容量等关键参数",
+    "version": "1.0",
+    "author": "Jiang Tao"
+  },
+  "experiments": [
+    {
+      "name": "EXP1-基准-本地内存",
+      "description": "基准实验：仅使用本地DDR内存，不使用CXL扩展内存",
+      "cxl_capacity_gb": 0,
+      "cxl_bandwidth_gbps": 64,
+      "cxl_base_latency_ns": 90,
+      "epoch_duration_ms": 10,
+      "enable_congestion": false,
+      "enable_mlp": false,
+      "duration_seconds": 60,
+      "repeat_count": 3
+    },
+    {
+      "name": "EXP2-延迟-Gen5标准",
+      "description": "CXL Gen5标准配置：170ns延迟",
+      "cxl_capacity_gb": 128,
+      "cxl_bandwidth_gbps": 64,
+      "cxl_base_latency_ns": 170,
+      "epoch_duration_ms": 10,
+      "enable_congestion": true,
+      "enable_mlp": false,
+      "duration_seconds": 60,
+      "repeat_count": 3
+    },
+    {
+      "name": "EXP3-延迟-Gen4",
+      "description": "CXL Gen4配置：250ns延迟",
+      "cxl_capacity_gb": 128,
+      "cxl_bandwidth_gbps": 64,
+      "cxl_base_latency_ns": 250,
+      "epoch_duration_ms": 10,
+      "enable_congestion": true,
+      "enable_mlp": false,
+      "duration_seconds": 60,
+      "repeat_count": 3
+    },
+    {
+      "name": "EXP4-延迟-远距离",
+      "description": "远距离或多跳场景：350ns延迟",
+      "cxl_capacity_gb": 128,
+      "cxl_bandwidth_gbps": 64,
+      "cxl_base_latency_ns": 350,
+      "epoch_duration_ms": 10,
+      "enable_congestion": true,
+      "enable_mlp": false,
+      "duration_seconds": 60,
+      "repeat_count": 3
+    },
+    {
+      "name": "EXP5-带宽-64GB/s",
+      "description": "高带宽配置：Gen5 x16 全带宽",
+      "cxl_capacity_gb": 128,
+      "cxl_bandwidth_gbps": 64,
+      "cxl_base_latency_ns": 170,
+      "epoch_duration_ms": 10,
+      "enable_congestion": true,
+      "enable_mlp": false,
+      "duration_seconds": 60,
+      "repeat_count": 3
+    },
+    {
+      "name": "EXP6-带宽-32GB/s",
+      "description": "中等带宽：Gen5 x8 或 Gen4 x16",
+      "cxl_capacity_gb": 128,
+      "cxl_bandwidth_gbps": 32,
+      "cxl_base_latency_ns": 170,
+      "epoch_duration_ms": 10,
+      "enable_congestion": true,
+      "enable_mlp": false,
+      "duration_seconds": 60,
+      "repeat_count": 3
+    },
+    {
+      "name": "EXP7-带宽-16GB/s",
+      "description": "低带宽配置：Gen4 x8",
+      "cxl_capacity_gb": 128,
+      "cxl_bandwidth_gbps": 16,
+      "cxl_base_latency_ns": 170,
+      "epoch_duration_ms": 10,
+      "enable_congestion": true,
+      "enable_mlp": false,
+      "duration_seconds": 60,
+      "repeat_count": 3
+    },
+    {
+      "name": "EXP8-拥塞模型-禁用",
+      "description": "对比实验：不考虑拥塞效应",
+      "cxl_capacity_gb": 128,
+      "cxl_bandwidth_gbps": 32,
+      "cxl_base_latency_ns": 170,
+      "epoch_duration_ms": 10,
+      "enable_congestion": false,
+      "enable_mlp": false,
+      "duration_seconds": 60,
+      "repeat_count": 3
+    },
+    {
+      "name": "EXP9-拥塞模型-启用",
+      "description": "对比实验：启用拥塞模型",
+      "cxl_capacity_gb": 128,
+      "cxl_bandwidth_gbps": 32,
+      "cxl_base_latency_ns": 170,
+      "epoch_duration_ms": 10,
+      "enable_congestion": true,
+      "enable_mlp": false,
+      "duration_seconds": 60,
+      "repeat_count": 3
+    },
+    {
+      "name": "EXP10-MLP优化-禁用",
+      "description": "对比实验：不使用内存级并行优化",
+      "cxl_capacity_gb": 128,
+      "cxl_bandwidth_gbps": 64,
+      "cxl_base_latency_ns": 170,
+      "epoch_duration_ms": 10,
+      "enable_congestion": true,
+      "enable_mlp": false,
+      "duration_seconds": 60,
+      "repeat_count": 3
+    },
+    {
+      "name": "EXP11-MLP优化-启用",
+      "description": "对比实验：启用MLP优化",
+      "cxl_capacity_gb": 128,
+      "cxl_bandwidth_gbps": 64,
+      "cxl_base_latency_ns": 170,
+      "epoch_duration_ms": 10,
+      "enable_congestion": true,
+      "enable_mlp": true,
+      "duration_seconds": 60,
+      "repeat_count": 3
+    }
+  ],
+  "expected_results": {
+    "note": "以下是预期结果的参考范围，实际结果可能因系统环境而异",
+    "baseline_latency_ns": "90-100",
+    "cxl_gen5_latency_ns": "170-200",
+    "cxl_gen4_latency_ns": "250-280",
+    "bandwidth_impact": "带宽降低50%时，拥塞模型下延迟增加15-25%",
+    "mlp_benefit": "MLP优化可降低10-15%的平均延迟"
+  }
+}

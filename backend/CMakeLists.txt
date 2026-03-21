@@ -7,6 +7,7 @@ set(BACKEND_SOURCES
     src/topology/topology_graph.cpp
     src/analyzer/latency_model.cpp
     src/analyzer/timing_analyzer.cpp
+    src/analyzer/experiment_manager.cpp
 )
 
 # Add PEBS tracer only if supported

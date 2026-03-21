@@ -48,7 +48,7 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::setupUI() {
-    setWindowTitle("CXLMemSim - CXL Memory Simulator");
+    setWindowTitle("CXLMemSim - CXL 内存模拟器");
     resize(1280, 800);
 
     setupMenuBar();
@@ -63,58 +63,69 @@ void MainWindow::setupUI() {
 
 void MainWindow::setupMenuBar() {
     // File menu
-    QMenu* fileMenu = menuBar()->addMenu("&File");
+    QMenu* fileMenu = menuBar()->addMenu("文件(&F)");
 
-    QAction* newAction = fileMenu->addAction("&New Configuration");
+    QAction* newAction = fileMenu->addAction("新建配置(&N)");
     newAction->setShortcut(QKeySequence::New);
     connect(newAction, &QAction::triggered, this, &MainWindow::onNewConfig);
 
-    QAction* openAction = fileMenu->addAction("&Open Configuration...");
+    QAction* openAction = fileMenu->addAction("打开配置(&O)...");
     openAction->setShortcut(QKeySequence::Open);
     connect(openAction, &QAction::triggered, this, &MainWindow::onOpenConfig);
 
-    QAction* saveAction = fileMenu->addAction("&Save Configuration");
+    QAction* saveAction = fileMenu->addAction("保存配置(&S)");
     saveAction->setShortcut(QKeySequence::Save);
     connect(saveAction, &QAction::triggered, this, &MainWindow::onSaveConfig);
 
-    QAction* saveAsAction = fileMenu->addAction("Save &As...");
+    QAction* saveAsAction = fileMenu->addAction("另存为(&A)...");
     saveAsAction->setShortcut(QKeySequence::SaveAs);
     connect(saveAsAction, &QAction::triggered, this, &MainWindow::onSaveConfigAs);
 
     fileMenu->addSeparator();
 
-    QAction* exportAction = fileMenu->addAction("Export &Topology...");
+    QAction* exportAction = fileMenu->addAction("导出拓扑(&T)...");
     connect(exportAction, &QAction::triggered, this, &MainWindow::onExportTopology);
+
+    QAction* exportDataAction = fileMenu->addAction("导出实验数据(&E)...");
+    connect(exportDataAction, &QAction::triggered, this, &MainWindow::onExportData);
 
     fileMenu->addSeparator();
 
-    QAction* exitAction = fileMenu->addAction("E&xit");
+    QAction* exitAction = fileMenu->addAction("退出(&X)");
     exitAction->setShortcut(QKeySequence::Quit);
     connect(exitAction, &QAction::triggered, this, &MainWindow::onExit);
 
     // Simulation menu
-    QMenu* simMenu = menuBar()->addMenu("&Simulation");
+    QMenu* simMenu = menuBar()->addMenu("模拟(&S)");
 
-    QAction* startAction = simMenu->addAction("&Start");
+    QAction* startAction = simMenu->addAction("开始模拟(&S)");
     startAction->setShortcut(Qt::Key_F5);
     connect(startAction, &QAction::triggered, this, &MainWindow::onStartSimulation);
 
-    QAction* stopAction = simMenu->addAction("S&top");
+    QAction* stopAction = simMenu->addAction("停止模拟(&T)");
     stopAction->setShortcut(Qt::Key_F6);
     connect(stopAction, &QAction::triggered, this, &MainWindow::onStopSimulation);
 
-    QAction* resetAction = simMenu->addAction("&Reset");
+    QAction* resetAction = simMenu->addAction("重置(&R)");
     connect(resetAction, &QAction::triggered, this, &MainWindow::onResetSimulation);
 
+    simMenu->addSeparator();
+
+    QAction* runExperimentsAction = simMenu->addAction("运行标准实验(&E)...");
+    connect(runExperimentsAction, &QAction::triggered, this, &MainWindow::onRunExperiments);
+
     // View menu
-    QMenu* viewMenu = menuBar()->addMenu("&View");
+    QMenu* viewMenu = menuBar()->addMenu("视图(&V)");
     // Will add dock widget toggles later
 
     // Help menu
-    QMenu* helpMenu = menuBar()->addMenu("&Help");
+    QMenu* helpMenu = menuBar()->addMenu("帮助(&H)");
 
-    QAction* aboutAction = helpMenu->addAction("&About");
+    QAction* aboutAction = helpMenu->addAction("关于(&A)");
     connect(aboutAction, &QAction::triggered, this, &MainWindow::onAbout);
+
+    QAction* docsAction = helpMenu->addAction("使用文档(&D)");
+    connect(docsAction, &QAction::triggered, this, &MainWindow::onShowDocs);
 }
 
 void MainWindow::setupToolBar() {
@@ -122,12 +133,12 @@ void MainWindow::setupToolBar() {
     toolbar->setMovable(false);
 
     // Start/Stop buttons
-    startButton_ = new QPushButton("Start Simulation");
+    startButton_ = new QPushButton("开始模拟");
     startButton_->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
     toolbar->addWidget(startButton_);
     connect(startButton_, &QPushButton::clicked, this, &MainWindow::onStartSimulation);
 
-    stopButton_ = new QPushButton("Stop");
+    stopButton_ = new QPushButton("停止");
     stopButton_->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
     stopButton_->setEnabled(false);
     toolbar->addWidget(stopButton_);
@@ -136,7 +147,7 @@ void MainWindow::setupToolBar() {
     toolbar->addSeparator();
 
     // Status label
-    statusLabel_ = new QLabel("Status: Idle");
+    statusLabel_ = new QLabel("状态: 就绪");
     toolbar->addWidget(statusLabel_);
 }
 
