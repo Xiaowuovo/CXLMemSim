@@ -18,6 +18,7 @@ set(FRONTEND_SOURCES
     widgets/config_tree_widget.cpp
     widgets/metrics_panel.cpp
     widgets/realtime_chart_widget.cpp
+    widgets/experiment_panel_widget.cpp
 )
 
 set(FRONTEND_HEADERS
@@ -26,6 +27,7 @@ set(FRONTEND_HEADERS
     widgets/config_tree_widget.h
     widgets/metrics_panel.h
     widgets/realtime_chart_widget.h
+    widgets/experiment_panel_widget.h
 )
 
 # Create executable

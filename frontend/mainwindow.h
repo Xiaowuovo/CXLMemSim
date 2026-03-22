@@ -1,6 +1,6 @@
 /**
  * @file mainwindow.h
- * @brief Main window for CXLMemSim GUI
+ * @brief CXLMemSim 主窗口
  */
 
 #ifndef MAINWINDOW_H
@@ -9,25 +9,19 @@
 #include <QMainWindow>
 #include <QDockWidget>
 #include <QTextEdit>
-#include <QTreeView>
 #include <QPushButton>
 #include <QLabel>
+#include <QTabWidget>
+#include <QTimer>
 #include <memory>
 #include "config_parser.h"
 #include "analyzer/timing_analyzer.h"
-#include "analyzer/experiment_manager.h"
-
-QT_BEGIN_NAMESPACE
-namespace Ui { class MainWindow; }
-QT_END_NAMESPACE
 
 class TopologyEditorWidget;
 class ConfigTreeWidget;
 class MetricsPanel;
+class ExperimentPanelWidget;
 
-/**
- * @brief Main application window
- */
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
@@ -36,67 +30,68 @@ public:
     ~MainWindow();
 
 private slots:
-    // File menu actions
+    // 文件菜单
     void onNewConfig();
     void onOpenConfig();
     void onSaveConfig();
     void onSaveConfigAs();
     void onExportTopology();
-    void onExportData();        // 导出实验数据
+    void onExportData();
     void onExit();
 
-    // Simulation menu actions
+    // 模拟菜单
     void onStartSimulation();
     void onStopSimulation();
     void onResetSimulation();
-    void onRunExperiments();    // 运行标准实验
 
-    // Help menu actions
+    // 实验菜单
+    void onRunExperiments();
+    void onShowDocs();
     void onAbout();
-    void onShowDocs();          // 显示使用文档
 
-    // Update handlers
+    // 更新处理
     void updateStatus(const QString& message);
     void updateMetrics();
 
 private:
     void setupUI();
+    void setupStyle();
     void setupMenuBar();
     void setupToolBar();
     void setupDockWidgets();
     void setupCentralWidget();
-    void createActions();
     void createConnections();
-
     void loadConfig(const QString& filename);
     void saveConfig(const QString& filename);
 
-    // UI Components
-    Ui::MainWindow *ui;
-
-    // Central widget - Topology Editor
+    // 中央区域 - 标签页
+    QTabWidget* centralTabs_;
     TopologyEditorWidget* topologyEditor_;
 
-    // Dock widgets
+    // 停靠面板
     QDockWidget* configDock_;
     QDockWidget* metricsDock_;
     QDockWidget* logDock_;
+    QDockWidget* expDock_;
 
-    // Child widgets
+    // 子控件
     ConfigTreeWidget* configTree_;
     MetricsPanel* metricsPanel_;
     QTextEdit* logView_;
+    ExperimentPanelWidget* expPanel_;
 
-    // Toolbar widgets
+    // 工具栏控件
     QPushButton* startButton_;
     QPushButton* stopButton_;
+    QPushButton* resetButton_;
     QLabel* statusLabel_;
 
-    // Backend components
+    // 后端组件
     cxlsim::CXLSimConfig config_;
     std::unique_ptr<cxlsim::TimingAnalyzer> analyzer_;
+    QTimer* updateTimer_;
 
-    // State
+    // 状态
     QString currentConfigFile_;
     bool simulationRunning_;
 };

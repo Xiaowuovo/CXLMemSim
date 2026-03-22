@@ -1,13 +1,27 @@
 /**
  * @file metrics_panel.cpp
- * @brief Metrics panel implementation
+ * @brief CXL 实时性能指标面板实现
  */
 
 #include "metrics_panel.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFormLayout>
+#include <QLabel>
 #include <QFrame>
+
+// ── 辅助函数：创建指标数值标签 ─────────────────────────────────────────────
+static QLabel* makeValueLabel(QWidget* parent, const QString& color = "#4FC3F7") {
+    auto* lbl = new QLabel("0", parent);
+    lbl->setStyleSheet(QString(
+        "font-size:15px; font-weight:bold; color:%1; "
+        "background:#0D0D1A; border:1px solid #0F3460; "
+        "border-radius:4px; padding:3px 8px; min-width:80px;").arg(color));
+    lbl->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    return lbl;
+}
+
+// ── MetricsPanel ─────────────────────────────────────────────────────────────
 
 MetricsPanel::MetricsPanel(QWidget *parent)
     : QWidget(parent)
@@ -26,166 +40,162 @@ MetricsPanel::MetricsPanel(QWidget *parent)
     setupUI();
 }
 
-MetricsPanel::~MetricsPanel() {
-}
+MetricsPanel::~MetricsPanel() {}
 
 void MetricsPanel::setupUI() {
-    QVBoxLayout* mainLayout = new QVBoxLayout(this);
-    mainLayout->setSpacing(10);
+    auto* mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(4, 4, 4, 4);
+    mainLayout->setSpacing(6);
 
-    // Add group boxes
     mainLayout->addWidget(createEpochGroup());
     mainLayout->addWidget(createAccessGroup());
     mainLayout->addWidget(createLatencyGroup());
     mainLayout->addWidget(createChartGroup());
-
     mainLayout->addStretch();
 }
 
 QGroupBox* MetricsPanel::createEpochGroup() {
-    QGroupBox* group = new QGroupBox("Current Epoch", this);
-    QVBoxLayout* layout = new QVBoxLayout(group);
+    auto* group = new QGroupBox("\u25d4  \u5f53\u524d Epoch", this);
+    auto* layout = new QHBoxLayout(group);
+    layout->setSpacing(8);
 
     epochNumber_ = new QLCDNumber(this);
     epochNumber_->setDigitCount(6);
     epochNumber_->setSegmentStyle(QLCDNumber::Flat);
     epochNumber_->display(0);
-
+    epochNumber_->setFixedHeight(50);
+    epochNumber_->setStyleSheet(
+        "QLCDNumber{background:#0D0D1A;color:#4FC3F7;"
+        "border:1px solid #0F3460;border-radius:6px;}");
     layout->addWidget(epochNumber_);
 
+    auto* infoLayout = new QVBoxLayout();
+    auto* epochLabel = new QLabel("\u5468\u671f\u7f16\u53f7", this);
+    epochLabel->setStyleSheet("color:#9E9E9E; font-size:11px;");
+    infoLayout->addWidget(epochLabel);
+    auto* unitLabel = new QLabel("epoch", this);
+    unitLabel->setStyleSheet("color:#4FC3F7; font-size:13px; font-weight:bold;");
+    infoLayout->addWidget(unitLabel);
+    layout->addLayout(infoLayout);
+    layout->addStretch();
     return group;
 }
 
 QGroupBox* MetricsPanel::createAccessGroup() {
-    QGroupBox* group = new QGroupBox("Memory Accesses", this);
-    QFormLayout* layout = new QFormLayout(group);
+    auto* group = new QGroupBox("\u25d4  \u5185\u5b58\u8bbf\u95ee\u7edf\u8ba1", this);
+    auto* layout = new QFormLayout(group);
+    layout->setSpacing(6);
+    layout->setLabelAlignment(Qt::AlignRight);
 
-    totalAccesses_ = new QLabel("0", this);
-    totalAccesses_->setStyleSheet("font-size: 14pt; font-weight: bold;");
-    layout->addRow("Total:", totalAccesses_);
+    totalAccesses_ = makeValueLabel(this, "#E0E0E0");
+    auto* tlbl = new QLabel("\u603b\u8bbf\u95ee\u6b21\u6570:", this);
+    tlbl->setStyleSheet("color:#B0BEC5;");
+    layout->addRow(tlbl, totalAccesses_);
 
-    l3Misses_ = new QLabel("0", this);
-    l3Misses_->setStyleSheet("font-size: 14pt; color: #ff6b6b;");
-    layout->addRow("L3 Misses:", l3Misses_);
+    l3Misses_ = makeValueLabel(this, "#EF5350");
+    auto* l3lbl = new QLabel("L3 \u7f3a\u5931\u6b21\u6570:", this);
+    l3lbl->setStyleSheet("color:#B0BEC5;");
+    layout->addRow(l3lbl, l3Misses_);
 
-    cxlAccesses_ = new QLabel("0", this);
-    cxlAccesses_->setStyleSheet("font-size: 14pt; color: #4ecdc4;");
-    layout->addRow("CXL Accesses:", cxlAccesses_);
+    cxlAccesses_ = makeValueLabel(this, "#4FC3F7");
+    auto* cxllbl = new QLabel("CXL \u8bbf\u95ee\u6b21\u6570:", this);
+    cxllbl->setStyleSheet("color:#B0BEC5;");
+    layout->addRow(cxllbl, cxlAccesses_);
 
-    // Miss rate progress bar
-    QLabel* missRateLabel = new QLabel("Miss Rate:", this);
-    layout->addRow(missRateLabel);
-
+    auto* rateLbl = new QLabel("L3 \u7f3a\u5931\u7387:", this);
+    rateLbl->setStyleSheet("color:#B0BEC5;");
     missRate_ = new QProgressBar(this);
     missRate_->setRange(0, 100);
     missRate_->setValue(0);
     missRate_->setFormat("%v%");
-    layout->addRow(missRate_);
+    missRate_->setFixedHeight(16);
+    missRate_->setStyleSheet(
+        "QProgressBar{background:#1E1E2E;border:1px solid #0F3460;"
+        "border-radius:4px;text-align:center;color:#E0E0E0;font-size:11px;}"
+        "QProgressBar::chunk{background:#4FC3F7;border-radius:3px;}");
+    layout->addRow(rateLbl, missRate_);
 
     return group;
 }
 
 QGroupBox* MetricsPanel::createLatencyGroup() {
-    QGroupBox* group = new QGroupBox("Latency", this);
-    QFormLayout* layout = new QFormLayout(group);
+    auto* group = new QGroupBox("\u25d4  \u5ef6\u8fdf\u6307\u6807", this);
+    auto* layout = new QFormLayout(group);
+    layout->setSpacing(6);
+    layout->setLabelAlignment(Qt::AlignRight);
 
-    avgLatency_ = new QLabel("0.0 ns", this);
-    avgLatency_->setStyleSheet("font-size: 14pt; font-weight: bold;");
-    layout->addRow("Average:", avgLatency_);
+    avgLatency_ = makeValueLabel(this, "#FFB74D");
+    auto* albl = new QLabel("\u5e73\u5747 CXL \u5ef6\u8fdf:", this);
+    albl->setStyleSheet("color:#B0BEC5;");
+    layout->addRow(albl, avgLatency_);
 
-    totalDelay_ = new QLabel("0.0 ms", this);
-    totalDelay_->setStyleSheet("font-size: 12pt; color: #95a5a6;");
-    layout->addRow("Total Injected:", totalDelay_);
+    totalDelay_ = makeValueLabel(this, "#9E9E9E");
+    auto* tdlbl = new QLabel("\u603b\u6ce8\u5165\u5ef6\u8fdf:", this);
+    tdlbl->setStyleSheet("color:#B0BEC5;");
+    layout->addRow(tdlbl, totalDelay_);
 
     return group;
 }
 
 QGroupBox* MetricsPanel::createChartGroup() {
-    QGroupBox* group = new QGroupBox("Performance Trends", this);
-    QVBoxLayout* layout = new QVBoxLayout(group);
+    auto* group = new QGroupBox("\u25d4  \u5b9e\u65f6\u6027\u80fd\u8d8b\u52bf\u56fe", this);
+    auto* layout = new QVBoxLayout(group);
 
     chartTabs_ = new QTabWidget(this);
 
-    // Latency Chart
     latencyChart_ = new RealTimeChartWidget(this);
-    latencyChart_->setTitle("Avg Latency (ns)");
+    latencyChart_->setTitle("\u5e73\u5747\u5ef6\u8fdf (ns)");
     latencyChart_->setYAxisLabel("ns");
-    latencyChart_->setLineColor(QColor(52, 152, 219)); // Blue
-    chartTabs_->addTab(latencyChart_, "Latency");
+    latencyChart_->setLineColor(QColor(0xFF, 0xB7, 0x4D));
+    chartTabs_->addTab(latencyChart_, "\u5ef6\u8fdf\u8d8b\u52bf");
 
-    // Bandwidth Chart
     bandwidthChart_ = new RealTimeChartWidget(this);
-    bandwidthChart_->setTitle("Bandwidth Usage (GB/s)");
+    bandwidthChart_->setTitle("\u5e26\u5bbd\u4f7f\u7528\u7387 (GB/s)");
     bandwidthChart_->setYAxisLabel("GB/s");
-    bandwidthChart_->setLineColor(QColor(46, 204, 113)); // Green
-    chartTabs_->addTab(bandwidthChart_, "Bandwidth");
+    bandwidthChart_->setLineColor(QColor(0x81, 0xC7, 0x84));
+    chartTabs_->addTab(bandwidthChart_, "\u5e26\u5bbd\u8d8b\u52bf");
 
-    // Miss Rate Chart
     missRateChart_ = new RealTimeChartWidget(this);
-    missRateChart_->setTitle("L3 Miss Rate (%)");
+    missRateChart_->setTitle("L3 \u7f3a\u5931\u7387 (%)");
     missRateChart_->setYAxisLabel("%");
-    missRateChart_->setLineColor(QColor(231, 76, 60)); // Red
-    chartTabs_->addTab(missRateChart_, "Miss Rate");
+    missRateChart_->setLineColor(QColor(0xEF, 0x53, 0x50));
+    chartTabs_->addTab(missRateChart_, "\u7f3a\u5931\u7387\u8d8b\u52bf");
 
     layout->addWidget(chartTabs_);
-
     return group;
 }
 
 void MetricsPanel::updateStats(const cxlsim::EpochStats& stats) {
-    // Update epoch number
     epochNumber_->display(static_cast<int>(stats.epoch_number));
 
-    // Update access counts
     totalAccesses_->setText(QString::number(stats.total_accesses));
     l3Misses_->setText(QString::number(stats.l3_misses));
     cxlAccesses_->setText(QString::number(stats.cxl_accesses));
 
-    // Update miss rate
-    if (stats.total_accesses > 0) {
-        int missRatePercent = (stats.l3_misses * 100) / stats.total_accesses;
-        missRate_->setValue(missRatePercent);
+    int missRatePct = 0;
+    if (stats.total_accesses > 0)
+        missRatePct = (int)((double)stats.l3_misses * 100.0 / stats.total_accesses);
+    missRate_->setValue(missRatePct);
 
-        // Color code: green (<20%), yellow (20-50%), red (>50%)
-        if (missRatePercent < 20) {
-            missRate_->setStyleSheet("QProgressBar::chunk { background-color: #2ecc71; }");
-        } else if (missRatePercent < 50) {
-            missRate_->setStyleSheet("QProgressBar::chunk { background-color: #f39c12; }");
-        } else {
-            missRate_->setStyleSheet("QProgressBar::chunk { background-color: #e74c3c; }");
-        }
-    } else {
-        missRate_->setValue(0);
-    }
+    QString chunkColor;
+    if (missRatePct < 20)       chunkColor = "#81C784";
+    else if (missRatePct < 50)  chunkColor = "#FFB74D";
+    else                         chunkColor = "#EF5350";
+    missRate_->setStyleSheet(QString(
+        "QProgressBar{background:#1E1E2E;border:1px solid #0F3460;"
+        "border-radius:4px;text-align:center;color:#E0E0E0;font-size:11px;}"
+        "QProgressBar::chunk{background:%1;border-radius:3px;}").arg(chunkColor));
 
-    // Update latency
-    avgLatency_->setText(QString("%1 ns").arg(stats.avg_latency_ns, 0, 'f', 2));
+    avgLatency_->setText(QString("%1 ns").arg(stats.avg_latency_ns, 0, 'f', 1));
+    totalDelay_->setText(QString("%1 ms").arg(stats.total_injected_delay_ns / 1e6, 0, 'f', 3));
 
-    double totalDelayMs = stats.total_injected_delay_ns / 1e6;
-    totalDelay_->setText(QString("%1 ms").arg(totalDelayMs, 0, 'f', 3));
+    latencyChart_->addDataPoint(stats.avg_latency_ns);
+    missRateChart_->addDataPoint(missRatePct);
 
-    // Update charts
-    if (stats.cxl_accesses > 0) {
-        latencyChart_->addDataPoint(stats.avg_latency_ns);
-    } else {
-        latencyChart_->addDataPoint(0.0);
-    }
-
-    // Calculate and update miss rate chart
-    double missRateVal = 0.0;
-    if (stats.total_accesses > 0) {
-        missRateVal = (double)stats.l3_misses * 100.0 / stats.total_accesses;
-    }
-    missRateChart_->addDataPoint(missRateVal);
-
-    // Estimate bandwidth (simplified: 64 bytes per access / epoch duration)
-    // Assuming 10ms epoch for now, ideally should get from config or stats
-    double bandwidthGbps = 0.0;
-    if (stats.total_accesses > 0) {
-        // 64 bytes * accesses / 0.01s / 1e9
-        bandwidthGbps = (stats.total_accesses * 64.0) / 0.01 / 1e9;
-    }
-    bandwidthChart_->addDataPoint(bandwidthGbps);
+    double bw = 0.0;
+    if (stats.total_accesses > 0)
+        bw = (stats.total_accesses * 64.0) / 0.01 / 1e9;
+    bandwidthChart_->addDataPoint(bw);
 }
 
 void MetricsPanel::reset() {
@@ -196,7 +206,6 @@ void MetricsPanel::reset() {
     avgLatency_->setText("0.0 ns");
     totalDelay_->setText("0.0 ms");
     missRate_->setValue(0);
-
     latencyChart_->clear();
     bandwidthChart_->clear();
     missRateChart_->clear();
