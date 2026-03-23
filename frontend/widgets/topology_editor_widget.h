@@ -14,64 +14,9 @@
 #include <QMap>
 #include "config_parser.h"
 
+// Forward declarations
 class ComponentItem;
 class LinkItem;
-
-/**
- * @brief Main topology editor widget
- */
-class TopologyEditorWidget : public QWidget {
-    Q_OBJECT
-
-public:
-    explicit TopologyEditorWidget(QWidget *parent = nullptr);
-    ~TopologyEditorWidget();
-
-    cxlsim::CXLSimConfig getCurrentConfig() const;
-
-public slots:
-    void updateTopology(const cxlsim::CXLSimConfig& config);
-    void clearTopology();
-    void exportToImage(const QString& filename);
-    void autoLayout();
-    
-private slots:
-    void onAddRootComplex();
-    void onAddSwitch();
-    void onAddCXLDevice();
-    void onDeleteSelected();
-    void onComponentMoved();
-
-signals:
-    void componentSelected(const QString& id);
-    void topologyModified();
-    void addDeviceRequested();
-    void addSwitchRequested();
-    void removeSelectedRequested();
-
-protected:
-    void contextMenuEvent(QContextMenuEvent* event) override;
-
-private:
-    void setupUI();
-    void setupToolBar();
-    void layoutComponents();
-    void addComponent(ComponentItem::ComponentType type, const QPointF& pos);
-    void startConnection(ComponentItem* from);
-    void finishConnection(ComponentItem* to);
-
-    QToolBar* toolbar_;
-    QGraphicsView* view_;
-    QGraphicsScene* scene_;
-
-    QMap<QString, ComponentItem*> components_;
-    QList<LinkItem*> links_;
-    
-    ComponentItem* connectionSource_;
-    QGraphicsLineItem* connectionPreview_;
-    int deviceCounter_;
-    int switchCounter_;
-};
 
 /**
  * @brief Graphical representation of a CXL component
@@ -135,6 +80,62 @@ private:
     ComponentItem* to_;
     double bandwidth_gbps_;
     double latency_ns_;
+};
+
+/**
+ * @brief Main topology editor widget
+ */
+class TopologyEditorWidget : public QWidget {
+    Q_OBJECT
+
+public:
+    explicit TopologyEditorWidget(QWidget *parent = nullptr);
+    ~TopologyEditorWidget();
+
+    cxlsim::CXLSimConfig getCurrentConfig() const;
+
+public slots:
+    void updateTopology(const cxlsim::CXLSimConfig& config);
+    void clearTopology();
+    void exportToImage(const QString& filename);
+    void autoLayout();
+    
+private slots:
+    void onAddRootComplex();
+    void onAddSwitch();
+    void onAddCXLDevice();
+    void onDeleteSelected();
+    void onComponentMoved();
+
+signals:
+    void componentSelected(const QString& id);
+    void topologyModified();
+    void addDeviceRequested();
+    void addSwitchRequested();
+    void removeSelectedRequested();
+
+protected:
+    void contextMenuEvent(QContextMenuEvent* event) override;
+
+private:
+    void setupUI();
+    void setupToolBar();
+    void layoutComponents();
+    void addComponent(ComponentItem::ComponentType type, const QPointF& pos);
+    void startConnection(ComponentItem* from);
+    void finishConnection(ComponentItem* to);
+
+    QToolBar* toolbar_;
+    QGraphicsView* view_;
+    QGraphicsScene* scene_;
+
+    QMap<QString, ComponentItem*> components_;
+    QList<LinkItem*> links_;
+    
+    ComponentItem* connectionSource_;
+    QGraphicsLineItem* connectionPreview_;
+    int deviceCounter_;
+    int switchCounter_;
 };
 
 #endif // TOPOLOGY_EDITOR_WIDGET_H
