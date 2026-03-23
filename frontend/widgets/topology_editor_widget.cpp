@@ -330,7 +330,7 @@ void TopologyEditorWidget::contextMenuEvent(QContextMenuEvent* event) {
     menu.addAction("添加 CXL 设备", this, &TopologyEditorWidget::onAddCXLDevice);
     menu.addSeparator();
     
-    auto* expAction = menu.addAction("导出拓扑图...", [this]() {
+    menu.addAction("导出拓扑图...", [this]() {
         QString fn = QFileDialog::getSaveFileName(this, "导出拓扑图", "topology.png", 
                                                    "图片 (*.png *.jpg)");
         if (!fn.isEmpty()) exportToImage(fn);

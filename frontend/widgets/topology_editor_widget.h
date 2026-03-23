@@ -93,6 +93,9 @@ public:
     ~TopologyEditorWidget();
 
     cxlsim::CXLSimConfig getCurrentConfig() const;
+    
+    void startConnection(ComponentItem* from);
+    void finishConnection(ComponentItem* to);
 
 public slots:
     void updateTopology(const cxlsim::CXLSimConfig& config);
@@ -122,8 +125,6 @@ private:
     void setupToolBar();
     void layoutComponents();
     void addComponent(ComponentItem::ComponentType type, const QPointF& pos);
-    void startConnection(ComponentItem* from);
-    void finishConnection(ComponentItem* to);
 
     QToolBar* toolbar_;
     QGraphicsView* view_;
