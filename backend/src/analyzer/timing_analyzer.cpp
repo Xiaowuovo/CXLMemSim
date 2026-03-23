@@ -245,19 +245,34 @@ void TimingAnalyzer::update_bandwidth_stats(const std::vector<MemoryAccessEvent>
 }
 
 void TimingAnalyzer::inject_delay(uint64_t delay_ns) {
-    // Simple busy-wait for short delays
-    if (delay_ns < 50000) {  // < 50 microseconds
-        auto start = std::chrono::high_resolution_clock::now();
-        while (true) {
-            auto now = std::chrono::high_resolution_clock::now();
-            auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(now - start);
-            if (elapsed.count() >= static_cast<long>(delay_ns)) {
-                break;
-            }
+    if (delay_ns == 0) return;
+    
+    // 添加现实世界延迟抖动 (±3% 随机偏差)
+    double jitter_factor = 1.0 + (static_cast<double>(rand()) / RAND_MAX - 0.5) * 0.06;
+    uint64_t actual_delay = static_cast<uint64_t>(delay_ns * jitter_factor);
+    
+    // 混合策略：长延迟用sleep，短延迟用自旋锁
+    const uint64_t SPIN_THRESHOLD = 10000;  // 10微秒
+    
+    if (actual_delay > SPIN_THRESHOLD) {
+        // 大部分时间用sleep节省CPU
+        uint64_t sleep_duration = actual_delay - SPIN_THRESHOLD;
+        std::this_thread::sleep_for(std::chrono::nanoseconds(sleep_duration));
+        actual_delay = SPIN_THRESHOLD;  // 剩余用自旋精确控制
+    }
+    
+    // 高精度自旋锁微调
+    auto start = std::chrono::high_resolution_clock::now();
+    while (true) {
+        auto now = std::chrono::high_resolution_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(now - start);
+        if (static_cast<uint64_t>(elapsed.count()) >= actual_delay) {
+            break;
         }
-    } else {
-        // Use sleep for longer delays
-        std::this_thread::sleep_for(std::chrono::nanoseconds(delay_ns));
+        // 避免过度占用CPU
+        if (actual_delay - elapsed.count() > 100) {
+            std::this_thread::yield();
+        }
     }
 }
 

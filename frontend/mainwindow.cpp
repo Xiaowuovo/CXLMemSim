@@ -133,19 +133,35 @@ void MainWindow::setupUI() {
 
 void MainWindow::setupMenuBar() {
     QMenu* fileMenu = menuBar()->addMenu("\u6587\u4ef6(&F)");
-    fileMenu->addAction("\u65b0\u5efa\u914d\u7f6e(&N)", QKeySequence::New, this, &MainWindow::onNewConfig);
-    fileMenu->addAction("\u6253\u5f00\u914d\u7f6e(&O)...", QKeySequence::Open, this, &MainWindow::onOpenConfig);
-    fileMenu->addAction("\u4fdd\u5b58\u914d\u7f6e(&S)", QKeySequence::Save, this, &MainWindow::onSaveConfig);
-    fileMenu->addAction("\u53e6\u5b58\u4e3a(&A)...", QKeySequence::SaveAs, this, &MainWindow::onSaveConfigAs);
+    
+    QAction* newAction = fileMenu->addAction("\u65b0\u5efa\u914d\u7f6e(&N)", this, &MainWindow::onNewConfig);
+    newAction->setShortcut(QKeySequence::New);
+    
+    QAction* openAction = fileMenu->addAction("\u6253\u5f00\u914d\u7f6e(&O)...", this, &MainWindow::onOpenConfig);
+    openAction->setShortcut(QKeySequence::Open);
+    
+    QAction* saveAction = fileMenu->addAction("\u4fdd\u5b58\u914d\u7f6e(&S)", this, &MainWindow::onSaveConfig);
+    saveAction->setShortcut(QKeySequence::Save);
+    
+    QAction* saveAsAction = fileMenu->addAction("\u53e6\u5b58\u4e3a(&A)...", this, &MainWindow::onSaveConfigAs);
+    saveAsAction->setShortcut(QKeySequence::SaveAs);
+    
     fileMenu->addSeparator();
     fileMenu->addAction("\u5bfc\u51fa\u62d3\u6251\u56fe(&T)...", this, &MainWindow::onExportTopology);
     fileMenu->addAction("\u5bfc\u51fa\u5b9e\u9a8c\u6570\u636e(&E)...", this, &MainWindow::onExportData);
     fileMenu->addSeparator();
-    fileMenu->addAction("\u9000\u51fa(&X)", QKeySequence::Quit, this, &MainWindow::onExit);
+    
+    QAction* exitAction = fileMenu->addAction("\u9000\u51fa(&X)", this, &MainWindow::onExit);
+    exitAction->setShortcut(QKeySequence::Quit);
 
     QMenu* simMenu = menuBar()->addMenu("\u6a21\u62df(&S)");
-    simMenu->addAction("\u5f00\u59cb\u6a21\u62df [F5]", Qt::Key_F5, this, &MainWindow::onStartSimulation);
-    simMenu->addAction("\u505c\u6b62\u6a21\u62df [F6]", Qt::Key_F6, this, &MainWindow::onStopSimulation);
+    
+    QAction* startAction = simMenu->addAction("\u5f00\u59cb\u6a21\u62df [F5]", this, &MainWindow::onStartSimulation);
+    startAction->setShortcut(Qt::Key_F5);
+    
+    QAction* stopAction = simMenu->addAction("\u505c\u6b62\u6a21\u62df [F6]", this, &MainWindow::onStopSimulation);
+    stopAction->setShortcut(Qt::Key_F6);
+    
     simMenu->addAction("\u91cd\u7f6e\u6a21\u62df(&R)", this, &MainWindow::onResetSimulation);
     simMenu->addSeparator();
     simMenu->addAction("\u8fd0\u884c\u9884\u8bbe\u5b9e\u9a8c(&E)...", this, &MainWindow::onRunExperiments);

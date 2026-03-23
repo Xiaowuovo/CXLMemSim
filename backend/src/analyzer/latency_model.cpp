@@ -108,24 +108,42 @@ double LatencyModel::calculate_congestion_penalty(const TopologyPath& path,
         return 0.0;
     }
 
-    double max_congestion_penalty = 0.0;
+    double total_penalty = 0.0;
+    
+    // 改进的拥塞模型考虑：
+    // 1. 队列深度效应
+    // 2. 突发流量检测
+    // 3. 多链路累积延迟
 
-    // Check congestion on each link in the path
     for (const auto* edge : path.edges) {
         double load = topology.get_link_load(edge->from_id, edge->to_id);
 
-        if (load > 0.7) {  // Congestion threshold at 70%
-            // Exponential penalty as load approaches 1.0
-            // penalty = base_delay * (1 + exp((load - 0.7) / 0.1))
-            double normalized_load = (load - 0.7) / 0.3;  // Map 0.7-1.0 to 0-1
-            double penalty_factor = 1.0 + std::exp(normalized_load * 3.0);
-            double penalty = edge->latency_ns * (penalty_factor - 1.0);
-
-            max_congestion_penalty = std::max(max_congestion_penalty, penalty);
+        if (load > 0.6) {  // 降低拥塞阈值到60%以提早响应
+            // 队列深度模型: 假设队列长度与负载成正比
+            // 队列深度 = max_queue_depth * (load - threshold) / (1 - threshold)
+            const double CONGESTION_THRESHOLD = 0.6;
+            const double MAX_QUEUE_DEPTH = 16.0;  // 典型PCIe/CXL队列深度
+            
+            double queue_factor = (load - CONGESTION_THRESHOLD) / (1.0 - CONGESTION_THRESHOLD);
+            double queue_depth = MAX_QUEUE_DEPTH * queue_factor;
+            
+            // 队列延迟 = 队列深度 * 单个事务延迟
+            // 使用非线性模型：高队列深度时延迟急剧增加
+            double queue_delay = edge->latency_ns * queue_depth * (1.0 + queue_factor);
+            
+            // 突发流量惩罚：负载>90%时额外指数惩罚
+            if (load > 0.9) {
+                double burst_factor = std::exp((load - 0.9) * 10.0);
+                queue_delay *= burst_factor;
+            }
+            
+            total_penalty += queue_delay;
         }
     }
 
-    return max_congestion_penalty;
+    // 多链路拥塞累积效应（非简单求和）
+    // 使用平方根模型避免过度惩罚
+    return total_penalty > 0 ? std::sqrt(total_penalty * path.edges.size()) * 10.0 : 0.0;
 }
 
 double LatencyModel::calculate_flit_overhead(double data_size_bytes, int pcie_gen) const {
