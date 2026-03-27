@@ -12,7 +12,24 @@
 #include <QGraphicsItem>
 #include <QToolBar>
 #include <QMap>
+#include <QWheelEvent>
+#include <QKeyEvent>
+#include <QLabel>
 #include "config_parser.h"
+
+/**
+ * @brief 支持滚轮缩放和平移的 GraphicsView
+ */
+class ZoomableGraphicsView : public QGraphicsView {
+    Q_OBJECT
+public:
+    explicit ZoomableGraphicsView(QGraphicsScene* scene, QWidget* parent = nullptr);
+protected:
+    void wheelEvent(QWheelEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
+private:
+    double zoomFactor_;
+};
 
 // Forward declarations
 class ComponentItem;
@@ -22,6 +39,16 @@ class LinkItem;
  * @brief Graphical representation of a CXL component
  */
 class TopologyEditorWidget;
+
+/**
+ * @brief 设备实时指标（模拟运行时填充）
+ */
+struct DeviceMetrics {
+    double latency_ns    = -1.0;   ///< -1 表示无数据
+    double bandwidth_gbps = -1.0;
+    double load_pct       = -1.0;
+    bool   active         = false;
+};
 
 class ComponentItem : public QGraphicsItem {
 public:
@@ -45,6 +72,9 @@ public:
     void removeLink(LinkItem* link) { links_.removeOne(link); }
     QList<LinkItem*> links() const { return links_; }
 
+    void setMetrics(const DeviceMetrics& m) { metrics_ = m; update(); }
+    const DeviceMetrics& metrics() const { return metrics_; }
+
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
@@ -58,6 +88,7 @@ private:
     QPointF dragStartPos_;
     QList<LinkItem*> links_;
     TopologyEditorWidget* editor_;
+    DeviceMetrics metrics_;
 };
 
 /**
@@ -102,6 +133,11 @@ public:
     void startConnection(ComponentItem* from);
     void finishConnection(ComponentItem* to);
 
+    void updateDeviceMetrics(const QString& deviceId, const DeviceMetrics& m);
+    void clearAllMetrics();
+    void setZoomLevel(double factor);
+    double zoomLevel() const;
+
 public slots:
     void updateTopology(const cxlsim::CXLSimConfig& config);
     void clearTopology();
@@ -132,8 +168,9 @@ private:
     void addComponent(ComponentItem::ComponentType type, const QPointF& pos);
 
     QToolBar* toolbar_;
-    QGraphicsView* view_;
+    ZoomableGraphicsView* view_;
     QGraphicsScene* scene_;
+    QLabel* zoomLabel_;
 
     QMap<QString, ComponentItem*> components_;
     QList<LinkItem*> links_;

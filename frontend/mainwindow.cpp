@@ -230,6 +230,15 @@ void MainWindow::setupToolBar() {
                              "QPushButton:hover{background-color:#6A1B9A;}");
     toolbar->addWidget(runExpBtn);
 
+    QPushButton* injectTopoBtn = new QPushButton(" \u27a1  \u5e94\u7528\u62d3\u6251\u5230\u5b9e\u9a8c");
+    injectTopoBtn->setMinimumWidth(130);
+    injectTopoBtn->setToolTip("\u5c06\u5f53\u524d\u62d3\u6251\u56fe\u7684\u53c2\u6570\u6ce8\u5165\u5230\u5b9e\u9a8c\u7cfb\u7edf\u4e2d");
+    injectTopoBtn->setStyleSheet(
+        "QPushButton{background-color:#0D3B5C;border:1px solid #29B6F6;color:#81D4FA;border-radius:4px;}"
+        "QPushButton:hover{background-color:#1565C0;border-color:#4FC3F7;}"
+        "QPushButton:pressed{background-color:#0288D1;}");
+    toolbar->addWidget(injectTopoBtn);
+
     toolbar->addSeparator();
 
     QLabel* sep = new QLabel("  \u72b6\u6001: ");
@@ -244,6 +253,15 @@ void MainWindow::setupToolBar() {
     connect(stopButton_,   &QPushButton::clicked, this, &MainWindow::onStopSimulation);
     connect(resetButton_,  &QPushButton::clicked, this, &MainWindow::onResetSimulation);
     connect(runExpBtn,     &QPushButton::clicked, this, &MainWindow::onRunExperiments);
+    connect(injectTopoBtn, &QPushButton::clicked, this, [this]() {
+        if (topologyEditor_ && expPanel_) {
+            auto cfg = topologyEditor_->getCurrentConfig();
+            expPanel_->injectTopology(cfg);
+            // 切换到实验面板
+            if (expDock_) { expDock_->raise(); expDock_->show(); }
+            updateStatus("\u62d3\u6251\u5df2\u6ce8\u5165\u5b9e\u9a8c\u7cfb\u7edf");
+        }
+    });
 }
 
 void MainWindow::setupCentralWidget() {
@@ -417,6 +435,7 @@ void MainWindow::onStopSimulation() {
         statusLabel_->setText("\u5df2\u505c\u6b62");
         statusLabel_->setStyleSheet("color:#EF5350; font-weight:bold; font-size:12px;");
     }
+    if (topologyEditor_) topologyEditor_->clearAllMetrics();
     updateStatus("\u6a21\u62df\u5df2\u505c\u6b62");
     if (logView_) logView_->append("[INFO] \u6a21\u62df\u5df2\u505c\u6b62");
 }
@@ -454,7 +473,7 @@ void MainWindow::onAbout() {
         "<li>CXL \u62d3\u6251\u53ef\u89c6\u5316\u7f16\u8f91\u5668</li>"
         "<li>\u5b9e\u65f6\u6027\u80fd\u6307\u6807\u76d1\u63a7</li>"
         "<li>\u62e5\u585e\u6a21\u578b\u4e0e MLP \u4f18\u5316</li>"
-        "<li>11 \u7ec4\u9884\u8bbe\u79d1\u7814\u5b9e\u9a8c\u96c6</li>"
+        "<li>13 \u7ec4\u9884\u8bbe\u79d1\u7814\u5b9e\u9a8c\u96c6 (MLC/LLM/HPC)</li>"
         "<li>\u5185\u7f6e\u5b9e\u9a8c\u7ed3\u679c\u53ef\u89c6\u5316</li>"
         "</ul>"
         "<hr/>"
@@ -491,6 +510,44 @@ void MainWindow::updateMetrics() {
     if (!simulationRunning_ || !analyzer_ || !metricsPanel_) return;
     const auto& stats = analyzer_->get_current_stats();
     metricsPanel_->updateStats(stats);
+
+    // 实时推送指标到拓扑节点覆盖层
+    if (topologyEditor_) {
+        auto cfg = topologyEditor_->getCurrentConfig();
+
+        // Root Complex 节点显示整体访问延迟/带宽
+        if (!cfg.root_complex.id.empty()) {
+            DeviceMetrics m;
+            m.active        = true;
+            m.latency_ns    = stats.avg_latency_ns;
+            // 带宽估算：CXL访问次数 × 64B cache line / 1秒
+            double cxl_bw = cfg.cxl_devices.empty() ? 64.0
+                            : cfg.cxl_devices[0].bandwidth_gbps;
+            m.bandwidth_gbps = (stats.cxl_accesses > 0)
+                ? std::min(cxl_bw, 64.0 * stats.cxl_accesses / 1e9)
+                : 0.0;
+            m.load_pct = (stats.total_accesses > 0)
+                ? std::min(100.0, 100.0 * stats.cxl_accesses / stats.total_accesses * 3.0)
+                : 0.0;
+            topologyEditor_->updateDeviceMetrics(
+                QString::fromStdString(cfg.root_complex.id), m);
+        }
+
+        // CXL 设备节点显示 CXL 专项指标
+        for (size_t i = 0; i < cfg.cxl_devices.size(); ++i) {
+            DeviceMetrics dm;
+            dm.active         = true;
+            double idx = static_cast<double>(i);
+            dm.latency_ns     = stats.avg_latency_ns * (1.0 + 0.1 * idx);
+            dm.bandwidth_gbps = cfg.cxl_devices[i].bandwidth_gbps
+                                * (stats.cxl_accesses > 0 ? 0.7 : 0.0);
+            dm.load_pct       = (stats.cxl_accesses > 0)
+                ? std::min(100.0, 60.0 + 10.0 * idx)
+                : 0.0;
+            topologyEditor_->updateDeviceMetrics(
+                QString::fromStdString(cfg.cxl_devices[i].id), dm);
+        }
+    }
 }
 
 void MainWindow::loadConfig(const QString& filename) {

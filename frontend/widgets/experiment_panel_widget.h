@@ -15,6 +15,7 @@
 #include <QGroupBox>
 #include <QSplitter>
 #include <QVector>
+#include <QPair>
 #include <QTimer>
 #include "config_parser.h"
 
@@ -23,14 +24,18 @@ class ResultChartWidget;
 struct ExperimentResult {
     QString name;
     QString category;
-    double avg_latency_ns   = 0.0;
-    double bandwidth_gbps   = 0.0;
-    double miss_rate_pct    = 0.0;
-    double cxl_latency_ns   = 0.0;
-    uint64_t total_accesses = 0;
-    bool mlp_enabled        = false;
-    bool congestion_enabled = false;
-    bool finished           = false;
+    double avg_latency_ns    = 0.0;
+    double bandwidth_gbps    = 0.0;
+    double miss_rate_pct     = 0.0;
+    double cxl_latency_ns    = 0.0;
+    double throughput_ops    = 0.0;  ///< ops/sec for LLM/HPC
+    double perf_degradation  = 0.0;  ///< % degradation vs baseline
+    uint64_t total_accesses  = 0;
+    bool mlp_enabled         = false;
+    bool congestion_enabled  = false;
+    bool finished            = false;
+    // MLC bandwidth-latency curve points
+    QVector<QPair<double,double>> bl_curve;  ///< (threads, latency_ns)
 };
 
 class ExperimentPanelWidget : public QWidget {
@@ -42,6 +47,12 @@ public:
 
     QWidget* getResultWidget() const;
     void exportResults(const QString& filename);
+
+    /**
+     * @brief 将自定义拓扑注入下一次实验，覆盖预设参数
+     */
+    void injectTopology(const cxlsim::CXLSimConfig& config);
+    void clearTopologyOverride();
 
 signals:
     void logMessage(const QString& message);
@@ -87,9 +98,20 @@ private:
         bool    mlp_enabled;
         bool    congestion_enabled;
         int     num_devices;
+        // 扩展字段
+        QString workload_type;  ///< "mlc", "llm_prefill", "llm_decode", "hpc_bw", "hpc_lat"
+        int     num_threads;    ///< MLC并发线程数
+        double  model_size_gb;  ///< LLM模型大小(GB)
+        double  kv_cache_gb;    ///< KV Cache大小(GB)
+        bool    is_baseline;    ///< 是否为对照基准
     };
+
     QVector<PresetExperiment> presets_;
     QVector<ExperimentResult> results_;
+
+    // 自定义拓扑注入
+    cxlsim::CXLSimConfig topologyOverride_;
+    bool hasTopologyOverride_ = false;
 
     // 模拟运行状态
     QTimer* simTimer_;

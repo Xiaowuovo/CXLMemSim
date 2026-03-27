@@ -18,7 +18,57 @@
 #include <QInputDialog>
 #include <QToolButton>
 #include <QLabel>
+#include <QKeyEvent>
 #include <cmath>
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ZoomableGraphicsView
+// ══════════════════════════════════════════════════════════════════════════════
+
+ZoomableGraphicsView::ZoomableGraphicsView(QGraphicsScene* scene, QWidget* parent)
+    : QGraphicsView(scene, parent), zoomFactor_(1.0)
+{
+    setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
+    setResizeAnchor(QGraphicsView::AnchorUnderMouse);
+    setDragMode(QGraphicsView::RubberBandDrag);
+}
+
+void ZoomableGraphicsView::wheelEvent(QWheelEvent* event) {
+    const double scaleFactor = 1.15;
+    if (event->angleDelta().y() > 0) {
+        if (zoomFactor_ < 5.0) {
+            scale(scaleFactor, scaleFactor);
+            zoomFactor_ *= scaleFactor;
+        }
+    } else {
+        if (zoomFactor_ > 0.1) {
+            scale(1.0 / scaleFactor, 1.0 / scaleFactor);
+            zoomFactor_ /= scaleFactor;
+        }
+    }
+    event->accept();
+}
+
+void ZoomableGraphicsView::keyPressEvent(QKeyEvent* event) {
+    if (event->key() == Qt::Key_Space) {
+        // 按空格切换拖拽模式
+        if (dragMode() == QGraphicsView::RubberBandDrag) {
+            setDragMode(QGraphicsView::ScrollHandDrag);
+            setCursor(Qt::OpenHandCursor);
+        } else {
+            setDragMode(QGraphicsView::RubberBandDrag);
+            setCursor(Qt::ArrowCursor);
+        }
+        event->accept();
+    } else if (event->key() == Qt::Key_0 && event->modifiers() & Qt::ControlModifier) {
+        // Ctrl+0 复位缩放
+        resetTransform();
+        zoomFactor_ = 1.0;
+        event->accept();
+    } else {
+        QGraphicsView::keyPressEvent(event);
+    }
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // TopologyEditorWidget - 主编辑器实现
@@ -34,6 +84,7 @@ TopologyEditorWidget::TopologyEditorWidget(QWidget *parent)
     , connectionPreview_(nullptr)
     , deviceCounter_(0)
     , switchCounter_(0)
+    , zoomLabel_(nullptr)
 {
     setupUI();
     setupToolBar();
@@ -47,24 +98,45 @@ void TopologyEditorWidget::setupUI() {
     layout->setSpacing(0);
 
     scene_ = new QGraphicsScene(this);
-    scene_->setSceneRect(-500, -400, 1000, 800);
-    scene_->setBackgroundBrush(QColor(0x1A, 0x1A, 0x2E));
+    scene_->setSceneRect(-800, -600, 1600, 1200);
+    scene_->setBackgroundBrush(QColor(0x0A, 0x0A, 0x0A));
 
-    view_ = new QGraphicsView(scene_, this);
+    view_ = new ZoomableGraphicsView(scene_, this);
     view_->setRenderHint(QPainter::Antialiasing);
     view_->setRenderHint(QPainter::TextAntialiasing);
-    view_->setDragMode(QGraphicsView::RubberBandDrag);
     view_->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
     view_->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     view_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    view_->setFocusPolicy(Qt::StrongFocus);
     view_->setStyleSheet(
-        "QGraphicsView{border:none;background:#1A1A2E;}"
-        "QScrollBar:vertical{background:#16213E;width:10px;}"
-        "QScrollBar::handle:vertical{background:#0F3460;border-radius:5px;}"
-        "QScrollBar:horizontal{background:#16213E;height:10px;}"
-        "QScrollBar::handle:horizontal{background:#0F3460;border-radius:5px;}");
+        "QGraphicsView{border:none;background:#0A0A0A;}"
+        "QScrollBar:vertical{background:#111111;width:8px;}"
+        "QScrollBar::handle:vertical{background:#333333;border-radius:4px;min-height:20px;}"
+        "QScrollBar:horizontal{background:#111111;height:8px;}"
+        "QScrollBar::handle:horizontal{background:#333333;border-radius:4px;min-width:20px;}");
 
     layout->addWidget(view_);
+}
+
+void TopologyEditorWidget::updateDeviceMetrics(const QString& deviceId, const DeviceMetrics& m) {
+    if (components_.contains(deviceId)) {
+        components_[deviceId]->setMetrics(m);
+    }
+}
+
+void TopologyEditorWidget::clearAllMetrics() {
+    DeviceMetrics empty;
+    for (auto* comp : components_)
+        comp->setMetrics(empty);
+}
+
+void TopologyEditorWidget::setZoomLevel(double factor) {
+    view_->resetTransform();
+    view_->scale(factor, factor);
+}
+
+double TopologyEditorWidget::zoomLevel() const {
+    return view_->transform().m11();
 }
 
 void TopologyEditorWidget::setupToolBar() {
@@ -497,8 +569,9 @@ ComponentItem::ComponentItem(const QString& id, ComponentType type, TopologyEdit
 }
 
 QRectF ComponentItem::boundingRect() const {
-    // 显著放大组件尺寸，从 110x64 增加到 180x100，便于查看和交互
-    return QRectF(-90, -50, 180, 100);
+    // 若有实时指标，向下扩展26px
+    double extraH = metrics_.active ? 26.0 : 0.0;
+    return QRectF(-90, -50, 180, 100 + extraH);
 }
 
 void ComponentItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
@@ -527,53 +600,49 @@ void ComponentItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt
     }
 
     bool isActive = highlighted_ || isSelected();
-    QRectF rect = boundingRect();
+    // 卡片主体固定100px高度；boundingRect()在有指标时会额外高26px
+    QRectF cardRect(-90, -50, 180, 100);
     
     // 渲染外层光晕 (发光阴影特效)
     if (isActive) {
         painter->setPen(Qt::NoPen);
         for (int i = 1; i <= 6; ++i) {
             painter->setBrush(QColor(accentColor.red(), accentColor.green(), accentColor.blue(), 60 / i));
-            painter->drawRoundedRect(rect.adjusted(-i*2, -i*2, i*2, i*2), 12, 12);
+            painter->drawRoundedRect(cardRect.adjusted(-i*2, -i*2, i*2, i*2), 12, 12);
         }
     } else {
-        // 常规微弱的投影
         painter->setPen(Qt::NoPen);
         painter->setBrush(QColor(0, 0, 0, 100));
-        painter->drawRoundedRect(rect.adjusted(4, 6, 4, 6), 10, 10);
+        painter->drawRoundedRect(cardRect.adjusted(4, 6, 4, 6), 10, 10);
     }
-    
+
     // 绘制主体卡片背景 (暗黑质感渐变)
-    auto bgGrad = QLinearGradient(rect.topLeft(), rect.bottomLeft());
+    auto bgGrad = QLinearGradient(cardRect.topLeft(), cardRect.bottomLeft());
     bgGrad.setColorAt(0.0, QColor(0x1A, 0x1A, 0x1A));
     bgGrad.setColorAt(1.0, QColor(0x0A, 0x0A, 0x0A));
     painter->setBrush(bgGrad);
-    
-    // 绘制边框
-    if (isActive) {
+    if (isActive)
         painter->setPen(QPen(accentColor, 2.0));
-    } else {
-        painter->setPen(QPen(QColor(0x44, 0x44, 0x44), 1)); // 细腻的细边框
-    }
-    painter->drawRoundedRect(rect, 10, 10);
+    else
+        painter->setPen(QPen(QColor(0x44, 0x44, 0x44), 1));
+    painter->drawRoundedRect(cardRect, 10, 10);
 
     // 绘制顶部彩色装饰条 (Vercel风格特色)
     painter->setPen(Qt::NoPen);
     painter->setBrush(isActive ? accentColor : baseColor);
-    // 顶边圆角，底边直角
     QPainterPath topBar;
-    topBar.moveTo(rect.left(), rect.top() + 12);
-    topBar.arcTo(rect.left(), rect.top(), 20, 20, 180, -90);
-    topBar.arcTo(rect.right() - 20, rect.top(), 20, 20, 90, -90);
-    topBar.lineTo(rect.right(), rect.top() + 6);
-    topBar.lineTo(rect.left(), rect.top() + 6);
+    topBar.moveTo(cardRect.left(), cardRect.top() + 12);
+    topBar.arcTo(cardRect.left(), cardRect.top(), 20, 20, 180, -90);
+    topBar.arcTo(cardRect.right() - 20, cardRect.top(), 20, 20, 90, -90);
+    topBar.lineTo(cardRect.right(), cardRect.top() + 6);
+    topBar.lineTo(cardRect.left(), cardRect.top() + 6);
     painter->drawPath(topBar);
 
     // 绘制主标签
     painter->setPen(QColor(0xED, 0xED, 0xED));
     QFont font("Inter, -apple-system, sans-serif", 14, QFont::Bold);
     painter->setFont(font);
-    painter->drawText(QRectF(rect.left(), rect.top() + 8, rect.width(), rect.height() / 2),
+    painter->drawText(QRectF(cardRect.left(), cardRect.top() + 8, cardRect.width(), 50),
                       Qt::AlignCenter, label);
 
     // 绘制ID (次级文本)
@@ -581,8 +650,52 @@ void ComponentItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt
     font.setBold(false);
     font.setPointSize(12);
     painter->setFont(font);
-    painter->drawText(QRectF(rect.left(), rect.top() + rect.height() / 2, rect.width(), rect.height() / 2 - 8),
+    painter->drawText(QRectF(cardRect.left(), cardRect.top() + 50, cardRect.width(), 42),
                       Qt::AlignCenter, id_);
+
+    // ── 实时指标覆盖层 ─────────────────────────────────────────────
+    if (metrics_.active) {
+        // 卡片主体固定高度 100px: top=-50, bottom=50
+        const double cardBottom = cardRect.bottom(); // = 50
+        QRectF metricsRect(cardRect.left(), cardBottom, cardRect.width(), 26);
+        painter->setBrush(QColor(0x05, 0x05, 0x05, 230));
+        painter->setPen(QPen(accentColor.darker(150), 1));
+        painter->drawRoundedRect(metricsRect, 4, 4);
+
+        QFont mf("JetBrains Mono, Consolas", 7);
+        painter->setFont(mf);
+
+        // 延迟
+        if (metrics_.latency_ns >= 0) {
+            painter->setPen(QColor(0xF9, 0x73, 0x16));
+            painter->drawText(QRectF(cardRect.left() + 4, cardBottom + 2, 56, 11),
+                              Qt::AlignLeft, QString("%1ns").arg(metrics_.latency_ns, 0, 'f', 0));
+        }
+        // 带宽
+        if (metrics_.bandwidth_gbps >= 0) {
+            painter->setPen(QColor(0x22, 0xC5, 0x5E));
+            painter->drawText(QRectF(cardRect.left() + 62, cardBottom + 2, 56, 11),
+                              Qt::AlignCenter, QString("%1GB/s").arg(metrics_.bandwidth_gbps, 0, 'f', 1));
+        }
+        // 负载百分比 + 进度条
+        if (metrics_.load_pct >= 0) {
+            QColor loadColor = metrics_.load_pct > 80 ? QColor(0xEF, 0x44, 0x44)
+                             : metrics_.load_pct > 50 ? QColor(0xFB, 0xBF, 0x24)
+                             : QColor(0x22, 0xC5, 0x5E);
+            painter->setPen(loadColor);
+            painter->drawText(QRectF(cardRect.right() - 46, cardBottom + 2, 42, 11),
+                              Qt::AlignRight, QString("%1%").arg(metrics_.load_pct, 0, 'f', 0));
+
+            QRectF barBg(cardRect.left() + 4, cardBottom + 15, cardRect.width() - 8, 6);
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(QColor(0x22, 0x22, 0x22));
+            painter->drawRoundedRect(barBg, 3, 3);
+            QRectF barFg(barBg.left(), barBg.top(),
+                         barBg.width() * metrics_.load_pct / 100.0, barBg.height());
+            painter->setBrush(loadColor);
+            painter->drawRoundedRect(barFg, 3, 3);
+        }
+    }
 }
 
 void ComponentItem::mousePressEvent(QGraphicsSceneMouseEvent* event) {
