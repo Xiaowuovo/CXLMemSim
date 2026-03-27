@@ -55,15 +55,15 @@ void ResultChartWidget::paintEvent(QPaintEvent*) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
 
-    // 背景
-    p.fillRect(rect(), QColor(0x0D, 0x0D, 0x1A));
+    // 背景 - 极黑
+    p.fillRect(rect(), QColor(0x05, 0x05, 0x05));
 
     QRect area = rect().adjusted(58, 16, -16, -40);
 
     if (results_.isEmpty()) {
-        p.setPen(QColor(0x4F, 0xC3, 0xF7));
-        p.setFont(QFont("Sans", 11));
-        p.drawText(rect(), Qt::AlignCenter, "暂无实验结果\n请先运行实验");
+        p.setPen(QColor(0x66, 0x66, 0x66));
+        p.setFont(QFont("Inter, -apple-system", 11));
+        p.drawText(rect(), Qt::AlignCenter, "No experiment results yet.\nPlease run an experiment first.");
         return;
     }
 
@@ -76,18 +76,26 @@ void ResultChartWidget::drawBarChart(QPainter& p, const QRect& area) {
     for (const auto& r : results_)
         if (r.finished) done.append(&r);
     if (done.isEmpty()) {
-        p.setPen(QColor(0x4F, 0xC3, 0xF7));
-        p.drawText(area, Qt::AlignCenter, "实验运行中...");
+        p.setPen(QColor(0x66, 0x66, 0x66));
+        p.drawText(area, Qt::AlignCenter, "Running experiments...");
         return;
     }
 
     // 选择数据
     QVector<double> vals;
     QString unit, title;
+    
+    // Vercel 风格色板 (高明度/低饱和)
     static const QColor BAR_COLORS[] = {
-        {0x4F,0xC3,0xF7}, {0x81,0xC7,0x84}, {0xFF,0xB7,0x4D},
-        {0xEF,0x53,0x50}, {0xCE,0x93,0xD8}, {0x80,0xDE,0xEA},
-        {0xA5,0xD6,0xA7}, {0xFF,0xCC,0x80}, {0xEF,0x9A,0x9A}
+        {0x3B,0x82,0xF6}, // Blue
+        {0x10,0xB9,0x81}, // Emerald
+        {0xF5,0x9E,0x0B}, // Amber
+        {0xEF,0x44,0x44}, // Red
+        {0x8B,0x5C,0xF6}, // Purple
+        {0x06,0xB6,0xD4}, // Cyan
+        {0x84,0xCC,0x16}, // Green
+        {0xF9,0x73,0x16}, // Orange
+        {0xF4,0x3F,0x5E}  // Rose
     };
 
     for (const auto* r : done) {
@@ -98,68 +106,76 @@ void ResultChartWidget::drawBarChart(QPainter& p, const QRect& area) {
         }
     }
     switch (chartType_) {
-        case 0: unit = "ns";    title = "平均延迟对比 (ns)"; break;
-        case 1: unit = "GB/s";  title = "估算带宽对比 (GB/s)"; break;
-        case 2: unit = "%";     title = "L3缺失率对比 (%)"; break;
+        case 0: unit = "ns";    title = "Average Latency (ns)"; break;
+        case 1: unit = "GB/s";  title = "Estimated Bandwidth (GB/s)"; break;
+        case 2: unit = "%";     title = "L3 Miss Rate (%)"; break;
     }
 
     double maxVal = *std::max_element(vals.begin(), vals.end());
     if (maxVal < 1e-9) maxVal = 1.0;
 
     // 绘制标题
-    p.setPen(QColor(0x4F, 0xC3, 0xF7));
-    p.setFont(QFont("Sans", 10, QFont::Bold));
+    p.setPen(QColor(0xED, 0xED, 0xED));
+    p.setFont(QFont("Inter, -apple-system", 10, QFont::Bold));
     p.drawText(QRect(area.left(), 2, area.width(), 14), Qt::AlignCenter, title);
 
     // Y轴刻度
     int nTick = 5;
-    p.setFont(QFont("Monospace", 8));
-    p.setPen(QColor(0x5A, 0x5A, 0x6E));
+    p.setFont(QFont("JetBrains Mono, Consolas", 8));
+    p.setPen(QColor(0x66, 0x66, 0x66));
     for (int i = 0; i <= nTick; ++i) {
         int y = area.bottom() - (int)(area.height() * i / (double)nTick);
         double val = maxVal * i / nTick;
-        p.drawLine(area.left() - 4, y, area.right(), y);
+        p.drawLine(area.left() - 4, y, area.right(), y); // 横向参考线 (极细)
         QString label = val < 10 ? QString::number(val, 'f', 1)
                                  : QString::number((int)val);
-        p.drawText(QRect(0, y - 8, area.left() - 6, 16),
+        p.drawText(QRect(0, y - 8, area.left() - 8, 16),
                    Qt::AlignRight | Qt::AlignVCenter, label);
     }
 
     // 柱形
     int n = done.size();
     int barW = std::max(8, (area.width() - (n + 1) * 6) / n);
-    barW = std::min(barW, 60);
+    barW = std::min(barW, 40); // 柱子稍微细一点，留白更多
 
-    p.setFont(QFont("Sans", 8));
+    p.setFont(QFont("Inter, -apple-system", 8));
     for (int i = 0; i < n; ++i) {
         double v = vals[i];
         int h  = (int)(area.height() * v / maxVal);
         int x  = area.left() + 6 + i * (barW + 6);
         int y  = area.bottom() - h;
 
-        QLinearGradient grad(x, y, x, area.bottom());
+        // Vercel风格柱状图 (纯色+顶部微光)
         QColor col = BAR_COLORS[i % 9];
-        grad.setColorAt(0.0, col.lighter(140));
-        grad.setColorAt(1.0, col.darker(140));
+        
+        // 柱体底色
+        p.fillRect(QRect(x, y, barW, h), col.darker(150));
+        
+        // 柱体渐变
+        QLinearGradient grad(x, y, x, y + h);
+        grad.setColorAt(0.0, col);
+        grad.setColorAt(1.0, col.darker(200));
         p.fillRect(QRect(x, y, barW, h), grad);
-        p.setPen(col.lighter(160));
+        
+        // 边框
+        p.setPen(QPen(col.lighter(120), 1));
         p.drawRect(QRect(x, y, barW, h));
 
         // 数值标签
-        p.setPen(QColor(0xE0, 0xE0, 0xE0));
+        p.setPen(QColor(0xED, 0xED, 0xED));
         QString valStr = v < 10 ? QString::number(v, 'f', 1)
                                 : QString::number((int)v);
-        p.drawText(QRect(x, y - 16, barW, 14), Qt::AlignCenter, valStr);
+        p.drawText(QRect(x - 10, y - 18, barW + 20, 14), Qt::AlignCenter, valStr);
 
         // 实验名缩写
         QString shortName = done[i]->name.left(6);
-        p.setPen(QColor(0x9E, 0x9E, 0x9E));
-        p.drawText(QRect(x, area.bottom() + 4, barW, 30),
+        p.setPen(QColor(0x88, 0x88, 0x88));
+        p.drawText(QRect(x - 10, area.bottom() + 6, barW + 20, 30),
                    Qt::AlignHCenter | Qt::AlignTop, shortName);
     }
 
-    // Y轴线
-    p.setPen(QColor(0x0F, 0x34, 0x60));
+    // 坐标轴轴线
+    p.setPen(QPen(QColor(0x33, 0x33, 0x33), 2));
     p.drawLine(area.left(), area.top(), area.left(), area.bottom());
     p.drawLine(area.left(), area.bottom(), area.right(), area.bottom());
 }
@@ -215,24 +231,36 @@ void ExperimentPanelWidget::setupPresetExperiments() {
 
 void ExperimentPanelWidget::setupUI() {
     auto* mainLayout = new QHBoxLayout(this);
-    mainLayout->setContentsMargins(6, 6, 6, 6);
-    mainLayout->setSpacing(6);
+    mainLayout->setContentsMargins(12, 12, 12, 12);
+    mainLayout->setSpacing(16);
 
     auto* splitter = new QSplitter(Qt::Horizontal, this);
     splitter->setHandleWidth(4);
+    splitter->setStyleSheet("QSplitter::handle { background: #222222; }");
 
     // ── 左侧面板 ────────────────────────────────────────────────────────────
     auto* leftWidget = new QWidget(splitter);
     auto* leftLayout = new QVBoxLayout(leftWidget);
     leftLayout->setContentsMargins(0, 0, 0, 0);
-    leftLayout->setSpacing(4);
+    leftLayout->setSpacing(12);
 
-    auto* listGroup = new QGroupBox("预设实验列表 (共11组)", leftWidget);
+    auto* listGroup = new QGroupBox("PRESET EXPERIMENTS (11 Groups)", leftWidget);
+    listGroup->setStyleSheet(
+        "QGroupBox { color: #888888; font-size: 11px; font-weight: bold; letter-spacing: 1px; border: none; padding-top: 16px; }"
+        "QGroupBox::title { subcontrol-origin: margin; left: 0px; padding: 0px; }"
+    );
     auto* listLayout = new QVBoxLayout(listGroup);
-    listLayout->setSpacing(4);
+    listLayout->setContentsMargins(0, 8, 0, 0);
+    listLayout->setSpacing(8);
 
     experimentList_ = new QListWidget(listGroup);
-    experimentList_->setAlternatingRowColors(true);
+    experimentList_->setStyleSheet(
+        "QListWidget { background: #0A0A0A; color: #EDEDED; border: 1px solid #222222; border-radius: 6px; outline: none; padding: 4px; }"
+        "QListWidget::item { padding: 8px 4px; border-radius: 4px; margin: 1px; }"
+        "QListWidget::item:selected { background-color: #222222; color: #FFFFFF; }"
+        "QListWidget::item:hover:!selected { background-color: #111111; }"
+    );
+    experimentList_->setAlternatingRowColors(false);
     experimentList_->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
     // 按类别添加实验条目
@@ -240,53 +268,68 @@ void ExperimentPanelWidget::setupUI() {
     for (int i = 0; i < presets_.size(); ++i) {
         const auto& exp = presets_[i];
         if (exp.category != lastCat) {
-            auto* sep = new QListWidgetItem("▌ " + exp.category, experimentList_);
+            auto* sep = new QListWidgetItem(exp.category.toUpper(), experimentList_);
             sep->setFlags(Qt::ItemIsEnabled);
-            sep->setForeground(QColor(0x4F, 0xC3, 0xF7));
-            sep->setBackground(QColor(0x0F, 0x34, 0x60));
-            QFont f = sep->font();
-            f.setBold(true);
+            sep->setForeground(QColor(0x88, 0x88, 0x88));
+            sep->setBackground(Qt::NoBrush);
+            QFont f("Inter, -apple-system", 10, QFont::Bold);
             sep->setFont(f);
             sep->setData(Qt::UserRole, -1);
             lastCat = exp.category;
         }
         auto* item = new QListWidgetItem(
-            QString("  %1. %2").arg(i + 1).arg(exp.name), experimentList_);
+            QString("    %1. %2").arg(i + 1).arg(exp.name), experimentList_);
         item->setData(Qt::UserRole, i);
         item->setToolTip(exp.description);
     }
     listLayout->addWidget(experimentList_);
 
-    descLabel_ = new QLabel("选择实验查看说明", listGroup);
+    descLabel_ = new QLabel("Select an experiment to view details", listGroup);
     descLabel_->setWordWrap(true);
-    descLabel_->setStyleSheet("color:#9E9E9E; font-size:11px; padding:4px;"
-                              "border:1px solid #0F3460; border-radius:4px;"
-                              "background:#0D0D1A;");
-    descLabel_->setMinimumHeight(50);
+    descLabel_->setStyleSheet(
+        "color: #A1A1AA; font-size: 12px; padding: 12px;"
+        "border: 1px solid #222222; border-radius: 6px;"
+        "background: #050505;"
+    );
+    descLabel_->setMinimumHeight(70);
     listLayout->addWidget(descLabel_);
 
     leftLayout->addWidget(listGroup);
 
     // 控制按钮
-    auto* btnGroup = new QGroupBox("实验控制", leftWidget);
+    auto* btnGroup = new QGroupBox("CONTROLS", leftWidget);
+    btnGroup->setStyleSheet(
+        "QGroupBox { color: #888888; font-size: 11px; font-weight: bold; letter-spacing: 1px; border: none; padding-top: 16px; }"
+        "QGroupBox::title { subcontrol-origin: margin; left: 0px; padding: 0px; }"
+    );
     auto* btnLayout = new QVBoxLayout(btnGroup);
-    btnLayout->setSpacing(4);
+    btnLayout->setContentsMargins(0, 8, 0, 0);
+    btnLayout->setSpacing(8);
 
-    runSelectedBtn_ = new QPushButton("▶  运行选中实验");
+    runSelectedBtn_ = new QPushButton("Run Selected", this);
     runSelectedBtn_->setStyleSheet(
-        "QPushButton{background:#1B5E20;border-color:#81C784;color:#E8F5E9;}"
-        "QPushButton:hover{background:#2E7D32;}"
-        "QPushButton:pressed{background:#81C784;color:#1B5E20;}");
+        "QPushButton { background: #000000; color: #4ADE80; border: 1px solid #1A4D2E; border-radius: 6px; padding: 10px; font-weight: 500; }"
+        "QPushButton:hover { background: #052E16; border-color: #22C55E; }"
+        "QPushButton:pressed { background: #1A4D2E; }"
+        "QPushButton:disabled { background: #0A0A0A; color: #444444; border-color: #222222; }"
+    );
     btnLayout->addWidget(runSelectedBtn_);
 
-    runAllBtn_ = new QPushButton("▶▶  运行全部实验");
+    runAllBtn_ = new QPushButton("Run All Experiments", this);
     runAllBtn_->setStyleSheet(
-        "QPushButton{background:#0D47A1;border-color:#64B5F6;color:#E3F2FD;}"
-        "QPushButton:hover{background:#1565C0;}"
-        "QPushButton:pressed{background:#64B5F6;color:#0D47A1;}");
+        "QPushButton { background: #000000; color: #60A5FA; border: 1px solid #1E3A8A; border-radius: 6px; padding: 10px; font-weight: 500; }"
+        "QPushButton:hover { background: #172554; border-color: #3B82F6; }"
+        "QPushButton:pressed { background: #1E3A8A; }"
+        "QPushButton:disabled { background: #0A0A0A; color: #444444; border-color: #222222; }"
+    );
     btnLayout->addWidget(runAllBtn_);
 
-    clearBtn_ = new QPushButton("✕  清除结果");
+    clearBtn_ = new QPushButton("Clear Results", this);
+    clearBtn_->setStyleSheet(
+        "QPushButton { background: transparent; color: #888888; border: 1px dashed #333333; border-radius: 6px; padding: 10px; font-weight: 500; }"
+        "QPushButton:hover { background: #2A0808; color: #F87171; border-color: #7F1D1D; }"
+        "QPushButton:pressed { background: #450A0A; }"
+    );
     btnLayout->addWidget(clearBtn_);
 
     // 进度显示
@@ -294,11 +337,15 @@ void ExperimentPanelWidget::setupUI() {
     progressBar_->setRange(0, 100);
     progressBar_->setValue(0);
     progressBar_->setTextVisible(false);
-    progressBar_->setFixedHeight(8);
+    progressBar_->setFixedHeight(6);
+    progressBar_->setStyleSheet(
+        "QProgressBar { background: #111111; border: none; border-radius: 3px; }"
+        "QProgressBar::chunk { background: #EDEDED; border-radius: 3px; }"
+    );
     btnLayout->addWidget(progressBar_);
 
-    progressLabel_ = new QLabel("就绪", btnGroup);
-    progressLabel_->setStyleSheet("color:#9E9E9E; font-size:11px;");
+    progressLabel_ = new QLabel("Ready", btnGroup);
+    progressLabel_->setStyleSheet("color: #666666; font-size: 11px; font-weight: 500;");
     progressLabel_->setAlignment(Qt::AlignCenter);
     btnLayout->addWidget(progressLabel_);
 
@@ -309,23 +356,31 @@ void ExperimentPanelWidget::setupUI() {
     auto* rightWidget = new QWidget(splitter);
     auto* rightLayout = new QVBoxLayout(rightWidget);
     rightLayout->setContentsMargins(0, 0, 0, 0);
-    rightLayout->setSpacing(4);
+    rightLayout->setSpacing(16);
 
     // 图表组
-    auto* chartGroup = new QGroupBox("实验结果可视化", rightWidget);
+    auto* chartGroup = new QGroupBox("VISUALIZATION", rightWidget);
+    chartGroup->setStyleSheet(
+        "QGroupBox { color: #888888; font-size: 11px; font-weight: bold; letter-spacing: 1px; border: none; padding-top: 16px; }"
+        "QGroupBox::title { subcontrol-origin: margin; left: 0px; padding: 0px; }"
+    );
     auto* chartLayout = new QVBoxLayout(chartGroup);
+    chartLayout->setContentsMargins(0, 8, 0, 0);
+    chartLayout->setSpacing(8);
 
     // 图表类型切换
     auto* chartBtnRow = new QHBoxLayout();
-    const QStringList chartNames = {"延迟对比", "带宽对比", "缺失率对比"};
+    chartBtnRow->setSpacing(8);
+    const QStringList chartNames = {"Latency", "Bandwidth", "Miss Rate"};
     for (int i = 0; i < 3; ++i) {
         auto* btn = new QPushButton(chartNames[i]);
         btn->setCheckable(true);
         btn->setChecked(i == 0);
         btn->setStyleSheet(
-            "QPushButton{background:#16213E;border:1px solid #0F3460;"
-            "border-radius:3px;padding:4px 10px;min-width:70px;}"
-            "QPushButton:checked{background:#0F3460;color:#4FC3F7;font-weight:bold;}");
+            "QPushButton { background: transparent; color: #888888; border: 1px solid #333333; border-radius: 6px; padding: 6px 12px; font-size: 12px; }"
+            "QPushButton:hover { background: #111111; border-color: #555555; }"
+            "QPushButton:checked { background: #EDEDED; color: #000000; border: none; font-weight: 500; }"
+        );
         chartBtnRow->addWidget(btn);
         int idx = i;
         connect(btn, &QPushButton::clicked, this, [this, idx, chartNames, btn]() {
@@ -342,25 +397,40 @@ void ExperimentPanelWidget::setupUI() {
     chartLayout->addLayout(chartBtnRow);
 
     resultChart_ = new ResultChartWidget(chartGroup);
-    resultChart_->setMinimumHeight(180);
-    chartLayout->addWidget(resultChart_);
+    resultChart_->setMinimumHeight(240);
+    
+    // Add border to chart wrapper
+    auto* chartWrapper = new QFrame(chartGroup);
+    chartWrapper->setStyleSheet("QFrame { background: #0A0A0A; border: 1px solid #222222; border-radius: 6px; }");
+    auto* wrapperLayout = new QVBoxLayout(chartWrapper);
+    wrapperLayout->setContentsMargins(0, 0, 0, 0);
+    wrapperLayout->addWidget(resultChart_);
+    
+    chartLayout->addWidget(chartWrapper);
 
     rightLayout->addWidget(chartGroup, 3);
 
     // 数据表格组
-    auto* tableGroup = new QGroupBox("实验数据汇总", rightWidget);
+    auto* tableGroup = new QGroupBox("DATA SUMMARY", rightWidget);
+    tableGroup->setStyleSheet(
+        "QGroupBox { color: #888888; font-size: 11px; font-weight: bold; letter-spacing: 1px; border: none; padding-top: 16px; }"
+        "QGroupBox::title { subcontrol-origin: margin; left: 0px; padding: 0px; }"
+    );
     auto* tableLayout = new QVBoxLayout(tableGroup);
+    tableLayout->setContentsMargins(0, 8, 0, 0);
+    
     resultText_ = new QTextEdit(tableGroup);
     resultText_->setReadOnly(true);
-    resultText_->setFont(QFont("Monospace", 10));
+    resultText_->setFont(QFont("JetBrains Mono, Consolas", 11));
     resultText_->setStyleSheet(
-        "background:#0D0D1A;color:#B0BEC5;border:1px solid #0F3460;");
-    resultText_->setPlaceholderText("实验结果将显示在此处...");
+        "QTextEdit { background: #0A0A0A; color: #A1A1AA; border: 1px solid #222222; border-radius: 6px; padding: 8px; }"
+    );
+    resultText_->setPlaceholderText("Experiment results will appear here...");
     tableLayout->addWidget(resultText_);
     rightLayout->addWidget(tableGroup, 2);
 
     splitter->addWidget(rightWidget);
-    splitter->setSizes({320, 600});
+    splitter->setSizes({340, 600});
     mainLayout->addWidget(splitter);
 
     // 信号连接

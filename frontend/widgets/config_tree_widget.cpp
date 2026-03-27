@@ -27,49 +27,63 @@ ConfigTreeWidget::~ConfigTreeWidget() {}
 
 void ConfigTreeWidget::setupUI() {
     auto* mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(4, 4, 4, 4);
-    mainLayout->setSpacing(4);
+    mainLayout->setContentsMargins(12, 12, 12, 12);
+    mainLayout->setSpacing(12);
 
-    auto* titleLabel = new QLabel("\u2630 CXL \u7cfb\u7edf\u62d3\u6251\u914d\u7f6e", this);
+    auto* titleLabel = new QLabel("CONFIGURATION", this);
     titleLabel->setStyleSheet(
-        "color:#4FC3F7; font-weight:bold; font-size:12px; padding:4px 6px;"
-        "background:#0F3460; border-radius:3px;");
+        "color: #888888; font-weight: 700; font-size: 11px; letter-spacing: 1px; padding: 4px 2px;"
+    );
     mainLayout->addWidget(titleLabel);
 
     tree_ = new QTreeWidget(this);
-    tree_->setHeaderLabels({"\u5c5e\u6027", "\u503c"});
-    tree_->setColumnWidth(0, 150);
-    tree_->setAlternatingRowColors(true);
-    tree_->header()->setStretchLastSection(true);
-    tree_->setIndentation(14);
+    tree_->setHeaderHidden(true); // 隐藏表头，采用无边框设计
+    tree_->setColumnCount(2);
+    tree_->setColumnWidth(0, 160);
+    tree_->setIndentation(16);
+    tree_->setFocusPolicy(Qt::NoFocus);
+    tree_->setStyleSheet(
+        "QTreeWidget { background-color: transparent; color: #EDEDED; border: none; outline: none; }"
+        "QTreeWidget::item { padding: 6px; border-radius: 6px; margin: 2px 0; }"
+        "QTreeWidget::item:selected { background-color: #222222; }"
+        "QTreeWidget::item:hover:!selected { background-color: #111111; }"
+        "QTreeWidget::branch:has-siblings:!adjoins-item { border-image: none; }"
+        "QTreeWidget::branch:has-siblings:adjoins-item { border-image: none; }"
+        "QTreeWidget::branch:!has-children:!has-siblings:adjoins-item { border-image: none; }"
+        "QTreeWidget::branch:has-children:!has-siblings:closed, QTreeWidget::branch:closed:has-children:has-siblings { border-image: none; image: none; }"
+        "QTreeWidget::branch:open:has-children:!has-siblings, QTreeWidget::branch:open:has-children:has-siblings { border-image: none; image: none; }"
+    );
 
     connect(tree_, &QTreeWidget::itemDoubleClicked,
             this, &ConfigTreeWidget::onItemDoubleClicked);
 
     mainLayout->addWidget(tree_);
 
-    // 操作按钮行
+    // 操作按钮行 (现代化极简按钮)
     auto* btnLayout = new QHBoxLayout();
-    btnLayout->setSpacing(4);
+    btnLayout->setSpacing(8);
 
-    addDeviceButton_ = new QPushButton("+ \u8bbe\u5907", this);
-    addDeviceButton_->setStyleSheet(
-        "QPushButton{background:#1B5E20;border-color:#81C784;padding:5px 8px;}"
-        "QPushButton:hover{background:#2E7D32;}");
+    QString ghostBtnStyle = 
+        "QPushButton { background: #111111; color: #EDEDED; border: 1px solid #333333; border-radius: 6px; padding: 8px; font-size: 12px; font-weight: 500; }"
+        "QPushButton:hover { background: #1A1A1A; border-color: #555555; }"
+        "QPushButton:pressed { background: #222222; }";
+
+    addDeviceButton_ = new QPushButton("+ Device", this);
+    addDeviceButton_->setStyleSheet(ghostBtnStyle);
     connect(addDeviceButton_, &QPushButton::clicked, this, &ConfigTreeWidget::onAddDevice);
     btnLayout->addWidget(addDeviceButton_);
 
-    addSwitchButton_ = new QPushButton("+ \u4ea4\u6362\u673a", this);
-    addSwitchButton_->setStyleSheet(
-        "QPushButton{background:#0D47A1;border-color:#64B5F6;padding:5px 8px;}"
-        "QPushButton:hover{background:#1565C0;}");
+    addSwitchButton_ = new QPushButton("+ Switch", this);
+    addSwitchButton_->setStyleSheet(ghostBtnStyle);
     connect(addSwitchButton_, &QPushButton::clicked, this, &ConfigTreeWidget::onAddSwitch);
     btnLayout->addWidget(addSwitchButton_);
 
-    removeButton_ = new QPushButton("\u2212 \u5220\u9664", this);
+    removeButton_ = new QPushButton("Remove", this);
     removeButton_->setStyleSheet(
-        "QPushButton{background:#B71C1C;border-color:#EF9A9A;padding:5px 8px;}"
-        "QPushButton:hover{background:#C62828;}");
+        "QPushButton { background: transparent; color: #888888; border: 1px dashed #333333; border-radius: 6px; padding: 8px; font-size: 12px; font-weight: 500; }"
+        "QPushButton:hover { background: #2A0808; color: #F87171; border: 1px solid #7F1D1D; }"
+        "QPushButton:pressed { background: #450A0A; }"
+    );
     connect(removeButton_, &QPushButton::clicked, this, &ConfigTreeWidget::onRemoveSelected);
     btnLayout->addWidget(removeButton_);
 
@@ -79,7 +93,7 @@ void ConfigTreeWidget::setupUI() {
 void ConfigTreeWidget::setConfig(const cxlsim::CXLSimConfig& config) {
     config_ = config;
     populateTree();
-    emit configChanged(config_);
+    // 不发出 configChanged 信号，避免循环更新
 }
 
 cxlsim::CXLSimConfig ConfigTreeWidget::getConfig() const {
@@ -89,13 +103,14 @@ cxlsim::CXLSimConfig ConfigTreeWidget::getConfig() const {
 static QTreeWidgetItem* makeCategory(QTreeWidget* tree, const QString& text) {
     auto* item = new QTreeWidgetItem(tree);
     item->setText(0, text);
-    QFont f = item->font(0);
-    f.setBold(true);
+    QFont f("Inter, -apple-system", 11, QFont::Bold);
     item->setFont(0, f);
-    item->setForeground(0, QColor(0x4F, 0xC3, 0xF7));
-    item->setBackground(0, QColor(0x0F, 0x34, 0x60));
-    item->setBackground(1, QColor(0x0F, 0x34, 0x60));
+    item->setForeground(0, QColor(0xAA, 0xAA, 0xAA));
+    // 强制清除背景色，避免重叠
+    item->setBackground(0, Qt::NoBrush);
+    item->setBackground(1, Qt::NoBrush);
     item->setExpanded(true);
+    item->setFlags(item->flags() & ~Qt::ItemIsSelectable); // 分类不可被选中
     return item;
 }
 
@@ -105,8 +120,18 @@ static QTreeWidgetItem* makeRow(QTreeWidgetItem* parent,
     auto* item = new QTreeWidgetItem(parent);
     item->setText(0, prop);
     item->setText(1, val);
-    item->setForeground(0, QColor(0xB0, 0xBE, 0xC5));
-    item->setForeground(1, QColor(0xE0, 0xE0, 0xE0));
+    item->setForeground(0, QColor(0x88, 0x88, 0x88));
+    item->setBackground(0, Qt::NoBrush);
+    item->setBackground(1, Qt::NoBrush);
+    
+    // 值采用类似代码的高亮
+    if (editable) {
+        item->setForeground(1, QColor(0x60, 0xA5, 0xFA)); // 可编辑蓝
+        item->setToolTip(1, "Double click to edit");
+    } else {
+        item->setForeground(1, QColor(0xED, 0xED, 0xED));
+    }
+    
     if (editable) item->setFlags(item->flags() | Qt::ItemIsEditable);
     return item;
 }
@@ -167,27 +192,25 @@ void ConfigTreeWidget::addDevicesItem() {
 }
 
 void ConfigTreeWidget::addConnectionsItem() {
-    auto* connRoot = makeCategory(tree_,
-        QString("\u25b6 \u62d3\u6251\u8fde\u63a5 (%1\u6761)").arg(config_.connections.size()));
+    auto* connRoot = makeCategory(tree_, QString("▶ 拓扑连接 (%1条)").arg(config_.connections.size()));
     for (const auto& conn : config_.connections) {
         auto* connItem = new QTreeWidgetItem(connRoot);
-        connItem->setText(0, QString("  %1 \u2192 %2")
+        connItem->setText(0, QString("  %1 → %2")
             .arg(QString::fromStdString(conn.from))
             .arg(QString::fromStdString(conn.to)));
         connItem->setText(1, QString::fromStdString(conn.link));
-        connItem->setForeground(0, QColor(0xFF, 0xB7, 0x4D));
-        connItem->setForeground(1, QColor(0x9E, 0x9E, 0x9E));
+        connItem->setForeground(0, QColor(0x88, 0x88, 0x88));
+        connItem->setForeground(1, QColor(0x60, 0xA5, 0xFA));
+        connItem->setBackground(0, Qt::NoBrush);
+        connItem->setBackground(1, Qt::NoBrush);
     }
 }
 
 void ConfigTreeWidget::addSimulationItem() {
-    auto* simRoot = makeCategory(tree_, "\u25b6 \u6a21\u62df\u53c2\u6570");
-    makeRow(simRoot, "  Epoch\u65f6\u957f (ms)",
-            QString::number(config_.simulation.epoch_ms), true);
-    makeRow(simRoot, "  MLP\u4f18\u5316",
-            config_.simulation.enable_mlp_optimization ? "\u5f00\u542f" : "\u5173\u95ed");
-    makeRow(simRoot, "  \u62e5\u585e\u6a21\u578b",
-            config_.simulation.enable_congestion_model ? "\u5f00\u542f" : "\u5173\u95ed");
+    auto* simRoot = makeCategory(tree_, "▶ 模拟参数");
+    makeRow(simRoot, "  Epoch时长 (ms)", QString::number(config_.simulation.epoch_ms), true);
+    makeRow(simRoot, "  MLP优化", config_.simulation.enable_mlp_optimization ? "开启" : "关闭");
+    makeRow(simRoot, "  拥塞模型", config_.simulation.enable_congestion_model ? "开启" : "关闭");
 }
 
 void ConfigTreeWidget::onItemDoubleClicked(QTreeWidgetItem* item, int column) {
@@ -245,7 +268,38 @@ void ConfigTreeWidget::onAddSwitch() {
 
 void ConfigTreeWidget::onRemoveSelected() {
     QTreeWidgetItem* item = tree_->currentItem();
-    if (!item) return;
-    QMessageBox::information(this, "\u63d0\u793a",
-        "\u8bf7\u9009\u4e2d\u5177\u4f53\u7684\u8bbe\u5907\u6216\u4ea4\u6362\u673a\u8282\u70b9\u8fdb\u884c\u5220\u9664\u3002\n\u5f53\u524d\u7248\u672c\u5df2\u652f\u6301\u901a\u8fc7\u91cd\u5efa\u914d\u7f6e\u6765\u79fb\u9664\u3002");
+    if (!item) {
+        QMessageBox::information(this, "\u63d0\u793a", "\u8bf7\u5148\u9009\u4e2d\u8981\u5220\u9664\u7684\u8bbe\u5907\u6216\u4ea4\u6362\u673a\u8282\u70b9");
+        return;
+    }
+
+    QString itemText = item->text(0).trimmed();
+    
+    // 检查是否是设备节点（以 ● 开头）
+    if (itemText.startsWith("●")) {
+        QString id = itemText.mid(1).trimmed(); // 移除 ● 符号
+        
+        // 尝试删除设备
+        for (auto it = config_.cxl_devices.begin(); it != config_.cxl_devices.end(); ++it) {
+            if (QString::fromStdString(it->id) == id) {
+                config_.cxl_devices.erase(it);
+                populateTree();
+                emit configChanged(config_);
+                return;
+            }
+        }
+        
+        // 尝试删除交换机
+        for (auto it = config_.switches.begin(); it != config_.switches.end(); ++it) {
+            if (QString::fromStdString(it->id) == id) {
+                config_.switches.erase(it);
+                populateTree();
+                emit configChanged(config_);
+                return;
+            }
+        }
+    }
+    
+    QMessageBox::information(this, "提示",
+        "请选中具体的设备或交换机节点（带 ● 标记的项）进行删除");
 }

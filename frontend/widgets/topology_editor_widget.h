@@ -21,6 +21,8 @@ class LinkItem;
 /**
  * @brief Graphical representation of a CXL component
  */
+class TopologyEditorWidget;
+
 class ComponentItem : public QGraphicsItem {
 public:
     enum ComponentType {
@@ -29,7 +31,7 @@ public:
         CXLDevice
     };
 
-    ComponentItem(const QString& id, ComponentType type, QGraphicsItem* parent = nullptr);
+    ComponentItem(const QString& id, ComponentType type, TopologyEditorWidget* editor, QGraphicsItem* parent = nullptr);
 
     QRectF boundingRect() const override;
     void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) override;
@@ -55,6 +57,7 @@ private:
     bool highlighted_;
     QPointF dragStartPos_;
     QList<LinkItem*> links_;
+    TopologyEditorWidget* editor_;
 };
 
 /**
@@ -94,6 +97,8 @@ public:
 
     cxlsim::CXLSimConfig getCurrentConfig() const;
     
+    bool isConnectionMode() const { return connectionMode_; }
+    ComponentItem* getConnectionSource() const { return connectionSource_; }
     void startConnection(ComponentItem* from);
     void finishConnection(ComponentItem* to);
 
@@ -133,6 +138,7 @@ private:
     QMap<QString, ComponentItem*> components_;
     QList<LinkItem*> links_;
     
+    bool connectionMode_;
     ComponentItem* connectionSource_;
     QGraphicsLineItem* connectionPreview_;
     int deviceCounter_;

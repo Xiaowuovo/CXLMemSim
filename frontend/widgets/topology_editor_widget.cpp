@@ -29,6 +29,7 @@ TopologyEditorWidget::TopologyEditorWidget(QWidget *parent)
     , toolbar_(nullptr)
     , view_(nullptr)
     , scene_(nullptr)
+    , connectionMode_(false)
     , connectionSource_(nullptr)
     , connectionPreview_(nullptr)
     , deviceCounter_(0)
@@ -78,20 +79,20 @@ void TopologyEditorWidget::setupToolBar() {
         "QToolButton:pressed{background:#4FC3F7;color:#1A1A2E;}");
 
     auto* rcBtn = new QToolButton();
-    rcBtn->setText("+ RC");
-    rcBtn->setToolTip("添加根复合体 (Root Complex)");
+    rcBtn->setText("➕ 根复合体");
+    rcBtn->setToolTip("添加根复合体");
     connect(rcBtn, &QToolButton::clicked, this, &TopologyEditorWidget::onAddRootComplex);
     toolbar_->addWidget(rcBtn);
 
     auto* swBtn = new QToolButton();
-    swBtn->setText("+ 交换机");
-    swBtn->setToolTip("添加 CXL 交换机");
+    swBtn->setText("➕ CXL交换机");
+    swBtn->setToolTip("添加CXL交换机");
     connect(swBtn, &QToolButton::clicked, this, &TopologyEditorWidget::onAddSwitch);
     toolbar_->addWidget(swBtn);
 
     auto* devBtn = new QToolButton();
-    devBtn->setText("+ CXL设备");
-    devBtn->setToolTip("添加 CXL 内存设备");
+    devBtn->setText("➕ CXL设备");
+    devBtn->setToolTip("添加CXL内存设备");
     connect(devBtn, &QToolButton::clicked, this, &TopologyEditorWidget::onAddCXLDevice);
     toolbar_->addWidget(devBtn);
 
@@ -114,8 +115,22 @@ void TopologyEditorWidget::setupToolBar() {
 
     toolbar_->addSeparator();
 
-    auto* infoLabel = new QLabel("  💡 提示: 按住Ctrl点击设备可建立连接  ", toolbar_);
-    infoLabel->setStyleSheet("color:#4FC3F7;font-size:11px;padding:4px;");
+    // 连接模式切换按钮
+    auto* connectModeBtn = new QToolButton();
+    connectModeBtn->setText("🔗 连接模式");
+    connectModeBtn->setCheckable(true);
+    connectModeBtn->setToolTip("开启后点击两个节点即可连接");
+    connect(connectModeBtn, &QToolButton::toggled, this, [this](bool checked) {
+        connectionMode_ = checked;
+        if (!checked) {
+            connectionSource_ = nullptr;
+            scene_->update();
+        }
+    });
+    toolbar_->addWidget(connectModeBtn);
+
+    auto* infoLabel = new QLabel("  💡 点击'连接模式'后，依次点击两个节点即可连接  ", toolbar_);
+    infoLabel->setStyleSheet("color: #888888; font-size: 12px; font-weight: 500;");
     toolbar_->addWidget(infoLabel);
 
     qobject_cast<QVBoxLayout*>(layout())->insertWidget(0, toolbar_);
@@ -129,7 +144,8 @@ void TopologyEditorWidget::updateTopology(const cxlsim::CXLSimConfig& config) {
     if (!config.root_complex.id.empty()) {
         auto* rc = new ComponentItem(
             QString::fromStdString(config.root_complex.id),
-            ComponentItem::RootComplex);
+            ComponentItem::RootComplex,
+            this);
         rc->setPos(0, -220);
         scene_->addItem(rc);
         components_[QString::fromStdString(config.root_complex.id)] = rc;
@@ -139,7 +155,8 @@ void TopologyEditorWidget::updateTopology(const cxlsim::CXLSimConfig& config) {
     for (const auto& sw : config.switches) {
         auto* item = new ComponentItem(
             QString::fromStdString(sw.id),
-            ComponentItem::Switch);
+            ComponentItem::Switch,
+            this);
         item->setPos(-200 + swIdx * 200, 0);
         scene_->addItem(item);
         components_[QString::fromStdString(sw.id)] = item;
@@ -151,7 +168,8 @@ void TopologyEditorWidget::updateTopology(const cxlsim::CXLSimConfig& config) {
     for (const auto& dev : config.cxl_devices) {
         auto* item = new ComponentItem(
             QString::fromStdString(dev.id),
-            ComponentItem::CXLDevice);
+            ComponentItem::CXLDevice,
+            this);
         item->setPos(-250 + devIdx * 150, 220);
         scene_->addItem(item);
         components_[QString::fromStdString(dev.id)] = item;
@@ -208,8 +226,10 @@ void TopologyEditorWidget::addComponent(ComponentItem::ComponentType type, const
         case ComponentItem::CXLDevice:    id = QString("CXL_MEM%1").arg(deviceCounter_); break;
     }
     
-    auto* item = new ComponentItem(id, type);
+    auto* item = new ComponentItem(id, type, this);
     item->setPos(pos);
+    item->setFlag(QGraphicsItem::ItemIsMovable);
+    item->setFlag(QGraphicsItem::ItemIsSelectable);
     scene_->addItem(item);
     components_[id] = item;
 }
@@ -218,22 +238,60 @@ void TopologyEditorWidget::onDeleteSelected() {
     auto selected = scene_->selectedItems();
     if (selected.isEmpty()) return;
 
+    QList<ComponentItem*> compsToDelete;
+    QList<LinkItem*> linksToDelete;
+
+    // 收集要删除的项
     for (auto* item : selected) {
         if (auto* comp = dynamic_cast<ComponentItem*>(item)) {
-            for (auto* link : comp->links()) {
-                links_.removeOne(link);
-                scene_->removeItem(link);
-                delete link;
-            }
-            components_.remove(comp->id());
-            scene_->removeItem(comp);
-            delete comp;
+            compsToDelete.append(comp);
         } else if (auto* link = dynamic_cast<LinkItem*>(item)) {
+            linksToDelete.append(link);
+        }
+    }
+
+    // 先删除组件关联的所有链接
+    for (auto* comp : compsToDelete) {
+        // 复制链接列表，避免在遍历时修改
+        QList<LinkItem*> compLinks = comp->links();
+        for (auto* link : compLinks) {
+            // 从两端组件移除链接引用
+            if (link->fromComponent()) {
+                link->fromComponent()->removeLink(link);
+            }
+            if (link->toComponent()) {
+                link->toComponent()->removeLink(link);
+            }
+            // 从场景和列表中移除
             links_.removeOne(link);
             scene_->removeItem(link);
             delete link;
         }
     }
+
+    // 删除单独选中的链接
+    for (auto* link : linksToDelete) {
+        if (links_.contains(link)) {
+            // 从两端组件移除链接引用
+            if (link->fromComponent()) {
+                link->fromComponent()->removeLink(link);
+            }
+            if (link->toComponent()) {
+                link->toComponent()->removeLink(link);
+            }
+            links_.removeOne(link);
+            scene_->removeItem(link);
+            delete link;
+        }
+    }
+
+    // 最后删除组件
+    for (auto* comp : compsToDelete) {
+        components_.remove(comp->id());
+        scene_->removeItem(comp);
+        delete comp;
+    }
+
     emit topologyModified();
 }
 
@@ -247,17 +305,47 @@ void TopologyEditorWidget::autoLayout() {
         }
     }
 
-    for (int i = 0; i < rcs.size(); ++i)
-        rcs[i]->setPos(-100 * (rcs.size() - 1) + i * 200, -220);
+    // 改进的布局算法：更好的间距和对齐
+    const int RC_Y = -250;
+    const int SW_Y = 0;
+    const int DEV_Y = 250;
+    const int RC_SPACING = 220;
+    const int SW_SPACING = 180;
+    const int DEV_SPACING = 160;
+
+    // RC层居中
+    if (!rcs.isEmpty()) {
+        double totalWidth = (rcs.size() - 1) * RC_SPACING;
+        double startX = -totalWidth / 2.0;
+        for (int i = 0; i < rcs.size(); ++i) {
+            rcs[i]->setPos(startX + i * RC_SPACING, RC_Y);
+        }
+    }
     
-    for (int i = 0; i < switches.size(); ++i)
-        switches[i]->setPos(-150 * (switches.size() - 1) / 2 + i * 150, 0);
+    // 交换机层居中
+    if (!switches.isEmpty()) {
+        double totalWidth = (switches.size() - 1) * SW_SPACING;
+        double startX = -totalWidth / 2.0;
+        for (int i = 0; i < switches.size(); ++i) {
+            switches[i]->setPos(startX + i * SW_SPACING, SW_Y);
+        }
+    }
     
-    for (int i = 0; i < devices.size(); ++i)
-        devices[i]->setPos(-120 * (devices.size() - 1) / 2 + i * 120, 220);
+    // 设备层居中
+    if (!devices.isEmpty()) {
+        double totalWidth = (devices.size() - 1) * DEV_SPACING;
+        double startX = -totalWidth / 2.0;
+        for (int i = 0; i < devices.size(); ++i) {
+            devices[i]->setPos(startX + i * DEV_SPACING, DEV_Y);
+        }
+    }
     
+    // 更新所有连接线
     for (auto* link : links_)
         link->updatePosition();
+    
+    // 调整视图以适应所有内容
+    view_->fitInView(scene_->itemsBoundingRect().adjusted(-100, -100, 100, 100), Qt::KeepAspectRatio);
 }
 
 cxlsim::CXLSimConfig TopologyEditorWidget::getCurrentConfig() const {
@@ -350,20 +438,36 @@ void TopologyEditorWidget::onComponentMoved() {
 
 void TopologyEditorWidget::startConnection(ComponentItem* from) {
     connectionSource_ = from;
+    connectionSource_->setHighlight(true);
     connectionPreview_ = new QGraphicsLineItem();
-    connectionPreview_->setPen(QPen(QColor(0x4F, 0xC3, 0xF7), 2, Qt::DashLine));
+    connectionPreview_->setPen(QPen(QColor(0x4F, 0xC3, 0xF7), 3, Qt::DashLine));
+    connectionPreview_->setZValue(100);
     scene_->addItem(connectionPreview_);
 }
 
 void TopologyEditorWidget::finishConnection(ComponentItem* to) {
+    if (connectionPreview_) {
+        scene_->removeItem(connectionPreview_);
+        delete connectionPreview_;
+        connectionPreview_ = nullptr;
+    }
+    
     if (!connectionSource_ || connectionSource_ == to) {
-        if (connectionPreview_) {
-            scene_->removeItem(connectionPreview_);
-            delete connectionPreview_;
-            connectionPreview_ = nullptr;
+        if (connectionSource_) {
+            connectionSource_->setHighlight(false);
         }
         connectionSource_ = nullptr;
         return;
+    }
+    
+    // 检查是否已存在连接
+    for (auto* link : links_) {
+        if ((link->fromComponent() == connectionSource_ && link->toComponent() == to) ||
+            (link->fromComponent() == to && link->toComponent() == connectionSource_)) {
+            connectionSource_->setHighlight(false);
+            connectionSource_ = nullptr;
+            return; // 已存在连接，忽略
+        }
     }
     
     auto* link = new LinkItem(connectionSource_, to);
@@ -374,11 +478,7 @@ void TopologyEditorWidget::finishConnection(ComponentItem* to) {
     connectionSource_->addLink(link);
     to->addLink(link);
     
-    if (connectionPreview_) {
-        scene_->removeItem(connectionPreview_);
-        delete connectionPreview_;
-        connectionPreview_ = nullptr;
-    }
+    connectionSource_->setHighlight(false);
     connectionSource_ = nullptr;
     emit topologyModified();
 }
@@ -387,8 +487,8 @@ void TopologyEditorWidget::finishConnection(ComponentItem* to) {
 // ComponentItem - 设备图形项实现
 // ══════════════════════════════════════════════════════════════════════════════
 
-ComponentItem::ComponentItem(const QString& id, ComponentType type, QGraphicsItem* parent)
-    : QGraphicsItem(parent), id_(id), type_(type), highlighted_(false)
+ComponentItem::ComponentItem(const QString& id, ComponentType type, TopologyEditorWidget* editor, QGraphicsItem* parent)
+    : QGraphicsItem(parent), id_(id), type_(type), highlighted_(false), editor_(editor)
 {
     setFlag(ItemIsMovable);
     setFlag(ItemIsSelectable);
@@ -397,64 +497,102 @@ ComponentItem::ComponentItem(const QString& id, ComponentType type, QGraphicsIte
 }
 
 QRectF ComponentItem::boundingRect() const {
-    return QRectF(-55, -32, 110, 64);
+    // 显著放大组件尺寸，从 110x64 增加到 180x100，便于查看和交互
+    return QRectF(-90, -50, 180, 100);
 }
 
 void ComponentItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
     Q_UNUSED(option); Q_UNUSED(widget);
 
-    QColor fillColor, borderColor;
+    QColor baseColor, accentColor;
     QString label;
 
+    // 采用更克制的色彩系统
     switch (type_) {
         case RootComplex:
-            fillColor = QColor(0x64, 0xB5, 0xF6);
-            borderColor = QColor(0x42, 0xA5, 0xF5);
+            baseColor = QColor(0x1E, 0x3A, 0x8A); // 深邃蓝
+            accentColor = QColor(0x3B, 0x82, 0xF6); // 强调蓝
             label = "RC";
             break;
         case Switch:
-            fillColor = QColor(0x81, 0xC7, 0x84);
-            borderColor = QColor(0x66, 0xBB, 0x6A);
+            baseColor = QColor(0x14, 0x53, 0x2D); // 深邃绿
+            accentColor = QColor(0x22, 0xC5, 0x5E); // 强调绿
             label = "SW";
             break;
         case CXLDevice:
-            fillColor = QColor(0xFF, 0xB7, 0x4D);
-            borderColor = QColor(0xFF, 0xA7, 0x26);
+            baseColor = QColor(0x7C, 0x2D, 0x12); // 深邃橙
+            accentColor = QColor(0xF9, 0x73, 0x16); // 强调橙
             label = "CXL";
             break;
     }
 
-    if (highlighted_ || isSelected()) {
-        fillColor = fillColor.lighter(115);
-        borderColor = borderColor.lighter(130);
-    }
-
+    bool isActive = highlighted_ || isSelected();
     QRectF rect = boundingRect();
-    painter->setPen(QPen(borderColor, 2));
-    painter->setBrush(QLinearGradient(rect.topLeft(), rect.bottomLeft()));
-    auto grad = QLinearGradient(rect.topLeft(), rect.bottomLeft());
-    grad.setColorAt(0.0, fillColor.lighter(110));
-    grad.setColorAt(1.0, fillColor.darker(110));
-    painter->setBrush(grad);
-    painter->drawRoundedRect(rect, 8, 8);
+    
+    // 渲染外层光晕 (发光阴影特效)
+    if (isActive) {
+        painter->setPen(Qt::NoPen);
+        for (int i = 1; i <= 6; ++i) {
+            painter->setBrush(QColor(accentColor.red(), accentColor.green(), accentColor.blue(), 60 / i));
+            painter->drawRoundedRect(rect.adjusted(-i*2, -i*2, i*2, i*2), 12, 12);
+        }
+    } else {
+        // 常规微弱的投影
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(QColor(0, 0, 0, 100));
+        painter->drawRoundedRect(rect.adjusted(4, 6, 4, 6), 10, 10);
+    }
+    
+    // 绘制主体卡片背景 (暗黑质感渐变)
+    auto bgGrad = QLinearGradient(rect.topLeft(), rect.bottomLeft());
+    bgGrad.setColorAt(0.0, QColor(0x1A, 0x1A, 0x1A));
+    bgGrad.setColorAt(1.0, QColor(0x0A, 0x0A, 0x0A));
+    painter->setBrush(bgGrad);
+    
+    // 绘制边框
+    if (isActive) {
+        painter->setPen(QPen(accentColor, 2.0));
+    } else {
+        painter->setPen(QPen(QColor(0x44, 0x44, 0x44), 1)); // 细腻的细边框
+    }
+    painter->drawRoundedRect(rect, 10, 10);
 
-    painter->setPen(QColor(0x1A, 0x1A, 0x2E));
-    QFont font("Sans", 9, QFont::Bold);
+    // 绘制顶部彩色装饰条 (Vercel风格特色)
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(isActive ? accentColor : baseColor);
+    // 顶边圆角，底边直角
+    QPainterPath topBar;
+    topBar.moveTo(rect.left(), rect.top() + 12);
+    topBar.arcTo(rect.left(), rect.top(), 20, 20, 180, -90);
+    topBar.arcTo(rect.right() - 20, rect.top(), 20, 20, 90, -90);
+    topBar.lineTo(rect.right(), rect.top() + 6);
+    topBar.lineTo(rect.left(), rect.top() + 6);
+    painter->drawPath(topBar);
+
+    // 绘制主标签
+    painter->setPen(QColor(0xED, 0xED, 0xED));
+    QFont font("Inter, -apple-system, sans-serif", 14, QFont::Bold);
     painter->setFont(font);
-    painter->drawText(QRectF(rect.left(), rect.top(), rect.width(), rect.height() / 2),
+    painter->drawText(QRectF(rect.left(), rect.top() + 8, rect.width(), rect.height() / 2),
                       Qt::AlignCenter, label);
 
+    // 绘制ID (次级文本)
+    painter->setPen(QColor(0x88, 0x88, 0x88));
     font.setBold(false);
-    font.setPointSize(8);
+    font.setPointSize(12);
     painter->setFont(font);
-    painter->drawText(QRectF(rect.left(), rect.top() + rect.height() / 2, rect.width(), rect.height() / 2),
+    painter->drawText(QRectF(rect.left(), rect.top() + rect.height() / 2, rect.width(), rect.height() / 2 - 8),
                       Qt::AlignCenter, id_);
 }
 
 void ComponentItem::mousePressEvent(QGraphicsSceneMouseEvent* event) {
-    if (event->modifiers() & Qt::ControlModifier) {
-        auto* editor = dynamic_cast<TopologyEditorWidget*>(scene()->parent());
-        if (editor) editor->startConnection(this);
+    if (event->button() == Qt::LeftButton && editor_ && editor_->isConnectionMode()) {
+        // 连接模式下，左键点击处理连接
+        if (!editor_->getConnectionSource()) {
+            editor_->startConnection(this);
+        } else {
+            editor_->finishConnection(this);
+        }
         event->accept();
         return;
     }
@@ -463,18 +601,17 @@ void ComponentItem::mousePressEvent(QGraphicsSceneMouseEvent* event) {
 }
 
 void ComponentItem::mouseMoveEvent(QGraphicsSceneMouseEvent* event) {
+    // 在连接模式下显示预览线（无需Ctrl检查）
+    if (editor_ && editor_->property("connectionSource").value<ComponentItem*>()) {
+        event->accept();
+        return;
+    }
     QGraphicsItem::mouseMoveEvent(event);
     for (auto* link : links_)
         link->updatePosition();
 }
 
 void ComponentItem::mouseReleaseEvent(QGraphicsSceneMouseEvent* event) {
-    if (event->modifiers() & Qt::ControlModifier) {
-        auto* editor = dynamic_cast<TopologyEditorWidget*>(scene()->parent());
-        if (editor) editor->finishConnection(this);
-        event->accept();
-        return;
-    }
     QGraphicsItem::mouseReleaseEvent(event);
 }
 
@@ -513,33 +650,53 @@ void LinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, 
     QPointF p1 = from_->pos();
     QPointF p2 = to_->pos();
     
-    QColor lineColor = isSelected() ? QColor(0x4F, 0xC3, 0xF7) : QColor(0x5A, 0x5A, 0x6E);
-    painter->setPen(QPen(lineColor, 2, Qt::SolidLine));
+    // 基础线条绘制
+    bool active = isSelected() || (from_->isSelected() || to_->isSelected());
+    QColor lineColor = active ? QColor(0x60, 0xA5, 0xFA) : QColor(0x33, 0x33, 0x33);
+    painter->setPen(QPen(lineColor, active ? 3 : 2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     painter->drawLine(p1, p2);
 
+    // 绘制箭头
     QLineF line(p1, p2);
+    // 将箭头退后一点，避免挡住组件
+    QPointF arrowBase = p2 - QPointF(line.dx(), line.dy()) * (40.0 / line.length());
+    
     double angle = std::atan2(-line.dy(), line.dx());
-    QPointF arrowP1 = p2 - QPointF(sin(angle + M_PI / 3) * 12,
-                                    cos(angle + M_PI / 3) * 12);
-    QPointF arrowP2 = p2 - QPointF(sin(angle + M_PI - M_PI / 3) * 12,
-                                    cos(angle + M_PI - M_PI / 3) * 12);
+    QPointF arrowP1 = arrowBase - QPointF(sin(angle + M_PI / 3) * 10,
+                                          cos(angle + M_PI / 3) * 10);
+    QPointF arrowP2 = arrowBase - QPointF(sin(angle + M_PI - M_PI / 3) * 10,
+                                          cos(angle + M_PI - M_PI / 3) * 10);
     QPolygonF arrowHead;
-    arrowHead << p2 << arrowP1 << arrowP2;
+    arrowHead << arrowBase << arrowP1 << arrowP2;
+    painter->setPen(Qt::NoPen);
     painter->setBrush(lineColor);
     painter->drawPolygon(arrowHead);
 
+    // 悬浮式胶囊标签 (Pill Badge)
     if (bandwidth_gbps_ > 0) {
         QPointF midPoint = (p1 + p2) / 2;
-        QString label = QString("%1GB/s\n%2ns")
+        QString label = QString("%1 GB/s • %2 ns")
             .arg(bandwidth_gbps_, 0, 'f', 0)
             .arg(latency_ns_, 0, 'f', 0);
-        painter->setPen(QColor(0xE0, 0xE0, 0xE0));
-        QFont font("Sans", 7);
+        
+        QFont font("JetBrains Mono, Consolas", 8);
         painter->setFont(font);
         
-        QRectF labelRect(-25, -15, 50, 30);
+        QFontMetrics fm(font);
+        int textWidth = fm.horizontalAdvance(label);
+        int textHeight = fm.height();
+        
+        // 标签边框
+        QRectF labelRect(-textWidth/2 - 8, -textHeight/2 - 4, textWidth + 16, textHeight + 8);
         labelRect.moveCenter(midPoint);
-        painter->fillRect(labelRect, QColor(0x16, 0x21, 0x3E, 200));
+        
+        // 绘制毛玻璃质感底色
+        painter->setPen(QPen(QColor(0x33, 0x33, 0x33), 1));
+        painter->setBrush(QColor(0x0A, 0x0A, 0x0A, 220)); // 半透明黑
+        painter->drawRoundedRect(labelRect, labelRect.height()/2, labelRect.height()/2);
+        
+        // 绘制文本
+        painter->setPen(active ? QColor(0x60, 0xA5, 0xFA) : QColor(0x88, 0x88, 0x88));
         painter->drawText(labelRect, Qt::AlignCenter, label);
     }
 }
