@@ -68,39 +68,118 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::setupStyle() {
-    qApp->setStyle("Fusion");
-    
-    // Vercel / Linear 风格的现代化暗黑主题
     QString modernTheme = R"(
-        /* 全局基础设定 */
-        QMainWindow { background-color: #000000; }
-        QWidget { color: #EDEDED; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 13px; }
+        /* ═══════════════════════════════════════════════════════════════
+           CXLMEMSIM - PROFESSIONAL DARK THEME v3.0
+           企业级深色主题，极致细节打磨
+        ═══════════════════════════════════════════════════════════════ */
         
-        /* 菜单栏 - 修复顶部白色背景 */
-        QMenuBar { background-color: #0A0A0A; color: #EDEDED; border-bottom: 1px solid #1A1A1A; padding: 4px 8px; }
-        QMenuBar::item { background-color: transparent; padding: 6px 12px; border-radius: 4px; }
-        QMenuBar::item:selected { background-color: #1A1A1A; color: #FFFFFF; }
+        * { outline: none; }
+        
+        /* 主窗口与基础组件 - 微妙渐变背景 */
+        QMainWindow { 
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #000000, stop:0.5 #0A0A0A, stop:1 #000000); 
+            color: #E8E8E8; 
+            font-family: "Segoe UI", "SF Pro Display", "Microsoft YaHei UI", sans-serif; 
+            font-size: 13px; 
+        }
+        QWidget { background-color: transparent; color: #E8E8E8; }
+        
+        /* 菜单栏 - 增强层次感 */
+        QMenuBar { 
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #0D0D0D, stop:1 #050505); 
+            color: #E8E8E8; 
+            border-bottom: 1px solid #1A1A1A; 
+            padding: 4px; 
+            font-weight: 500;
+        }
+        QMenuBar::item { 
+            background-color: transparent; 
+            padding: 7px 16px; 
+            border-radius: 6px; 
+            margin: 2px 4px;
+        }
+        QMenuBar::item:selected { 
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #1A1A1A, stop:1 #0F0F0F); 
+        }
         QMenuBar::item:pressed { background-color: #222222; }
         
-        /* 下拉菜单 */
-        QMenu { background-color: #0A0A0A; color: #EDEDED; border: 1px solid #222222; border-radius: 6px; padding: 4px; }
-        QMenu::item { background-color: transparent; padding: 8px 24px 8px 12px; border-radius: 4px; }
-        QMenu::item:selected { background-color: #1A1A1A; color: #FFFFFF; }
-        QMenu::separator { height: 1px; background: #222222; margin: 4px 8px; }
+        QMenu { 
+            background-color: #0F0F0F; 
+            color: #E8E8E8; 
+            border: 1px solid #2A2A2A; 
+            border-radius: 10px; 
+            padding: 8px; 
+        }
+        QMenu::item { 
+            background-color: transparent; 
+            padding: 10px 32px 10px 16px; 
+            border-radius: 6px; 
+            min-width: 160px; 
+            font-size: 13px;
+        }
+        QMenu::item:selected { 
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #1E1E1E, stop:1 #141414); 
+            color: #FFFFFF; 
+        }
+        QMenu::separator { 
+            height: 1px; 
+            background-color: #1A1A1A; 
+            margin: 8px 12px; 
+        }
         
-        /* 工具栏 (克制的分隔线) */
-        QToolBar { background-color: #000000; border-bottom: 1px solid #222222; padding: 6px; spacing: 8px; }
-        QToolBar::separator { background-color: #333333; width: 1px; margin: 4px 8px; }
+        /* 工具栏 - 专业级工具条 */
+        QToolBar { 
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #0D0D0D, stop:1 #050505); 
+            border: none; 
+            border-bottom: 1px solid #1A1A1A; 
+            spacing: 6px; 
+            padding: 8px 12px; 
+        }
+        QToolBar::separator { 
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #1A1A1A, stop:1 #333333); 
+            width: 1px; 
+            margin: 6px 12px; 
+        }
         
         /* 面板停靠区 (干净的标题栏) */
         QDockWidget { color: #888888; font-weight: 500; }
         QDockWidget::title { background-color: #0A0A0A; padding: 8px 12px; font-size: 12px; border-bottom: 1px solid #222222; }
         
-        /* 按钮体系 (克制的交互) */
-        QPushButton { background-color: #111111; color: #EDEDED; border: 1px solid #333333; border-radius: 6px; padding: 6px 16px; font-weight: 500; outline: none; }
-        QPushButton:hover { background-color: #1A1A1A; border-color: #444444; color: #FFFFFF; }
-        QPushButton:pressed { background-color: #222222; border-color: #555555; }
-        QPushButton:disabled { background-color: #0A0A0A; color: #444444; border-color: #222222; }
+        /* 按钮 - 专业级交互反馈 */
+        QPushButton { 
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #1A1A1A, stop:1 #0F0F0F); 
+            color: #E8E8E8; 
+            border: 1px solid #2A2A2A; 
+            border-radius: 7px; 
+            padding: 9px 18px; 
+            font-weight: 500; 
+            font-size: 13px;
+            min-height: 26px; 
+        }
+        QPushButton:hover { 
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #252525, stop:1 #1A1A1A); 
+            border-color: #444444; 
+            color: #FFFFFF;
+        }
+        QPushButton:pressed { 
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #0F0F0F, stop:1 #1A1A1A); 
+            border-color: #555555;
+        }
+        QPushButton:disabled { 
+            background-color: #0A0A0A; 
+            color: #444444; 
+            border-color: #1A1A1A; 
+        }
         
         /* 状态按钮 (Semantic Colors) */
         QPushButton#startBtn { background-color: #000000; border: 1px solid #1A4D2E; color: #4ADE80; }
@@ -108,12 +187,43 @@ void MainWindow::setupStyle() {
         QPushButton#stopBtn { background-color: #000000; border: 1px solid #7F1D1D; color: #F87171; }
         QPushButton#stopBtn:hover { background-color: #450A0A; border-color: #EF4444; }
         
-        /* 树形列表 (优雅的层级) */
-        QTreeWidget, QListWidget { background-color: transparent; color: #EDEDED; border: none; outline: none; }
-        QTreeWidget::item, QListWidget::item { padding: 4px; border-radius: 4px; margin: 1px 4px; background: transparent; }
-        QTreeWidget::item:selected, QListWidget::item:selected { background-color: #222222; color: #FFFFFF; }
-        QTreeWidget::item:hover:!selected, QListWidget::item:hover:!selected { background-color: #111111; }
-        QHeaderView::section { background-color: #0A0A0A; color: #888888; padding: 6px; border: none; border-bottom: 1px solid #222222; font-weight: 500; text-align: left; }
+        /* 树形列表 - 清晰的信息层级 */
+        QTreeWidget, QListWidget { 
+            background-color: transparent; 
+            color: #E8E8E8; 
+            border: none; 
+            outline: none; 
+            font-size: 13px;
+        }
+        QTreeWidget::item, QListWidget::item { 
+            padding: 8px 12px; 
+            border-radius: 6px; 
+            margin: 2px 6px; 
+            background: transparent; 
+            min-height: 24px;
+        }
+        QTreeWidget::item:selected, QListWidget::item:selected { 
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #1E1E1E, stop:1 #141414); 
+            color: #FFFFFF; 
+            border-left: 2px solid #4FC3F7;
+        }
+        QTreeWidget::item:hover:!selected, QListWidget::item:hover:!selected { 
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #141414, stop:1 #0A0A0A); 
+        }
+        QHeaderView::section { 
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                stop:0 #0D0D0D, stop:1 #050505); 
+            color: #888888; 
+            padding: 10px 12px; 
+            border: none; 
+            border-bottom: 1px solid #1A1A1A; 
+            font-weight: 600; 
+            font-size: 12px;
+            text-align: left; 
+            letter-spacing: 0.5px;
+        }
         
         /* 标签页 (现代化的底部下划线设计) */
         QTabWidget::pane { border: none; border-top: 1px solid #222222; background-color: #000000; }
@@ -137,10 +247,37 @@ void MainWindow::setupStyle() {
         QGroupBox { color: #888888; font-size: 11px; font-weight: bold; letter-spacing: 1px; border: none; padding-top: 16px; }
         QGroupBox::title { subcontrol-origin: margin; left: 0px; padding: 0px; }
         
-        /* 文本区域与输入框 */
-        QTextEdit { background-color: #050505; color: #A1A1AA; border: 1px solid #222222; border-radius: 6px; font-family: "JetBrains Mono", "Fira Code", Consolas, monospace; font-size: 12px; padding: 4px; }
-        QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox { background-color: #0A0A0A; color: #EDEDED; border: 1px solid #333333; border-radius: 6px; padding: 6px 10px; }
-        QLineEdit:focus, QSpinBox:focus, QComboBox:focus { border-color: #666666; background-color: #111111; }
+        /* 文本区域 - 专业编辑器风格 */
+        QTextEdit { 
+            background-color: #050505; 
+            color: #B8B8B8; 
+            border: 1px solid #1A1A1A; 
+            border-radius: 8px; 
+            font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace; 
+            font-size: 12px; 
+            padding: 12px; 
+            selection-background-color: #264F78;
+            selection-color: #FFFFFF;
+        }
+        
+        /* 输入框 - 增强聚焦状态 */
+        QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox { 
+            background-color: #0D0D0D; 
+            color: #E8E8E8; 
+            border: 1px solid #2A2A2A; 
+            border-radius: 7px; 
+            padding: 8px 12px; 
+            font-size: 13px;
+            min-height: 20px;
+        }
+        QLineEdit:focus, QSpinBox:focus, QComboBox:focus { 
+            border-color: #4FC3F7; 
+            background-color: #0F0F0F; 
+            color: #FFFFFF;
+        }
+        QLineEdit:hover, QSpinBox:hover, QComboBox:hover { 
+            border-color: #3A3A3A; 
+        }
         
         /* QComboBox 下拉箭头和列表（修复白色背景问题） */
         QComboBox::drop-down { border: none; background: transparent; width: 20px; }
@@ -233,51 +370,176 @@ void MainWindow::setupToolBar() {
     toolbar->setMovable(false);
     toolbar->setIconSize(QSize(16, 16));
 
-    startButton_ = new QPushButton(" \u25b6  \u5f00\u59cb\u6a21\u62df");
+    // ══════════════════════════════════════════════════════════
+    // 模拟控制按钮组 - 专业级状态按钮
+    // ══════════════════════════════════════════════════════════
+    startButton_ = new QPushButton("▶ 开始模拟");
     startButton_->setObjectName("startBtn");
-    startButton_->setMinimumWidth(110);
+    startButton_->setMinimumWidth(120);
+    startButton_->setMinimumHeight(32);
+    startButton_->setCursor(Qt::PointingHandCursor);
+    startButton_->setStyleSheet(
+        "QPushButton#startBtn { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #0A3D2C, stop:1 #052E16); "
+        "    color: #6EE7B7; "
+        "    border: 1px solid #166534; "
+        "    border-radius: 7px; "
+        "    padding: 6px 16px; "
+        "    font-weight: 600; "
+        "    font-size: 13px;"
+        "}"
+        "QPushButton#startBtn:hover { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #14532D, stop:1 #0A3D2C); "
+        "    color: #86EFAC; "
+        "    border-color: #22C55E; "
+        "}"
+        "QPushButton#startBtn:pressed { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #052E16, stop:1 #0A3D2C); "
+        "}"
+    );
     toolbar->addWidget(startButton_);
 
-    stopButton_ = new QPushButton(" \u25a0  \u505c\u6b62");
+    stopButton_ = new QPushButton("■ 停止");
     stopButton_->setObjectName("stopBtn");
     stopButton_->setEnabled(false);
-    stopButton_->setMinimumWidth(90);
+    stopButton_->setMinimumWidth(100);
+    stopButton_->setMinimumHeight(32);
+    stopButton_->setCursor(Qt::PointingHandCursor);
+    stopButton_->setStyleSheet(
+        "QPushButton#stopBtn { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #3D0A0A, stop:1 #2E0505); "
+        "    color: #FCA5A5; "
+        "    border: 1px solid #7F1D1D; "
+        "    border-radius: 7px; "
+        "    padding: 6px 16px; "
+        "    font-weight: 600; "
+        "    font-size: 13px;"
+        "}"
+        "QPushButton#stopBtn:hover { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #532D14, stop:1 #3D0A0A); "
+        "    color: #FEE2E2; "
+        "    border-color: #DC2626; "
+        "}"
+        "QPushButton#stopBtn:disabled { "
+        "    background: #0A0A0A; "
+        "    color: #444444; "
+        "    border-color: #1A1A1A; "
+        "}"
+    );
     toolbar->addWidget(stopButton_);
 
-    resetButton_ = new QPushButton(" \u21ba  \u91cd\u7f6e");
-    resetButton_->setMinimumWidth(90);
+    resetButton_ = new QPushButton("↺ 重置");
+    resetButton_->setMinimumWidth(100);
+    resetButton_->setMinimumHeight(32);
+    resetButton_->setCursor(Qt::PointingHandCursor);
+    resetButton_->setStyleSheet(
+        "QPushButton { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #1A1A1A, stop:1 #0F0F0F); "
+        "    color: #A1A1AA; "
+        "    border: 1px solid #2A2A2A; "
+        "    border-radius: 7px; "
+        "    padding: 6px 16px; "
+        "    font-weight: 500; "
+        "    font-size: 13px;"
+        "}"
+        "QPushButton:hover { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #252525, stop:1 #1A1A1A); "
+        "    color: #E8E8E8; "
+        "    border-color: #3A3A3A; "
+        "}"
+    );
     toolbar->addWidget(resetButton_);
 
     toolbar->addSeparator();
 
-    QPushButton* runExpBtn = new QPushButton(" \u2605  \u8fd0\u884c\u5b9e\u9a8c");
-    runExpBtn->setMinimumWidth(100);
-    runExpBtn->setStyleSheet("QPushButton{background-color:#4A148C;border-color:#CE93D8;color:#F3E5F5;}"
-                             "QPushButton:hover{background-color:#6A1B9A;}");
-
+    // ══════════════════════════════════════════════════════════
+    // 实验操作按钮组 - 高对比度操作按钮
+    // ══════════════════════════════════════════════════════════
+    QPushButton* runExpBtn = new QPushButton("★ 运行实验");
+    runExpBtn->setMinimumWidth(110);
+    runExpBtn->setMinimumHeight(32);
+    runExpBtn->setCursor(Qt::PointingHandCursor);
+    runExpBtn->setStyleSheet(
+        "QPushButton { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #3B0764, stop:1 #2E0555); "
+        "    color: #E9D5FF; "
+        "    border: 1px solid #6B21A8; "
+        "    border-radius: 7px; "
+        "    padding: 6px 16px; "
+        "    font-weight: 600; "
+        "    font-size: 13px;"
+        "}"
+        "QPushButton:hover { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #581C87, stop:1 #3B0764); "
+        "    color: #F3E8FF; "
+        "    border-color: #9333EA; "
+        "}"
+    );
     toolbar->addWidget(runExpBtn);
 
-    QPushButton* injectTopoBtn = new QPushButton(" \u27a1  \u5e94\u7528\u62d3\u6251\u5230\u5b9e\u9a8c");
-    injectTopoBtn->setMinimumWidth(130);
+    QPushButton* injectTopoBtn = new QPushButton("➜ 应用拓扑");
+    injectTopoBtn->setMinimumWidth(110);
+    injectTopoBtn->setMinimumHeight(32);
+    injectTopoBtn->setCursor(Qt::PointingHandCursor);
     injectTopoBtn->setToolTip("将当前拓扑图的参数注入到实验系统中");
     injectTopoBtn->setStyleSheet(
-        "QPushButton{background-color:#0D3B5C;border:1px solid #29B6F6;color:#81D4FA;border-radius:4px;}"
-        "QPushButton:hover{background-color:#1565C0;border-color:#4FC3F7;}"
-        "QPushButton:pressed{background-color:#0288D1;}");
+        "QPushButton { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #075985, stop:1 #0C4A6E); "
+        "    color: #BAE6FD; "
+        "    border: 1px solid #0284C7; "
+        "    border-radius: 7px; "
+        "    padding: 6px 16px; "
+        "    font-weight: 600; "
+        "    font-size: 13px;"
+        "}"
+        "QPushButton:hover { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #0369A1, stop:1 #075985); "
+        "    color: #E0F2FE; "
+        "    border-color: #0EA5E9; "
+        "}"
+    );
 
     toolbar->addWidget(injectTopoBtn);
 
     toolbar->addSeparator();
 
-    // ── 科研多组对比按钮 ──
-    QPushButton* pinBaselineBtn = new QPushButton(" \u2318  固定基准");
-    pinBaselineBtn->setMinimumWidth(100);
+    // ══════════════════════════════════════════════════════════
+    // 科研对比工具组 - 专业实验工具
+    // ══════════════════════════════════════════════════════════
+    QPushButton* pinBaselineBtn = new QPushButton("📌 固定基准");
+    pinBaselineBtn->setMinimumWidth(110);
+    pinBaselineBtn->setMinimumHeight(32);
+    pinBaselineBtn->setCursor(Qt::PointingHandCursor);
     pinBaselineBtn->setToolTip("将当前实验数据固定为基准线，用于多组对比（控制变量法）");
     pinBaselineBtn->setStyleSheet(
-        "QPushButton{background-color:#1E40AF;border:1px solid #3B82F6;color:#DBEAFE;border-radius:4px;}"
-        "QPushButton:hover{background-color:#1D4ED8;border-color:#60A5FA;}"
-        "QPushButton:pressed{background-color:#2563EB;}");
-
+        "QPushButton { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #1E3A8A, stop:1 #1E40AF); "
+        "    color: #DBEAFE; "
+        "    border: 1px solid #2563EB; "
+        "    border-radius: 7px; "
+        "    padding: 6px 16px; "
+        "    font-weight: 600; "
+        "    font-size: 13px;"
+        "}"
+        "QPushButton:hover { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #1D4ED8, stop:1 #1E3A8A); "
+        "    color: #EFF6FF; "
+        "    border-color: #3B82F6; "
+        "}"
+    );
     toolbar->addWidget(pinBaselineBtn);
     connect(pinBaselineBtn, &QPushButton::clicked, this, [this]() {
         if (metricsPanel_) {
@@ -287,13 +549,29 @@ void MainWindow::setupToolBar() {
         }
     });
 
-    QPushButton* clearBaselineBtn = new QPushButton(" 🗑  清除基准");
-    clearBaselineBtn->setMinimumWidth(100);
+    QPushButton* clearBaselineBtn = new QPushButton("✕ 清除基准");
+    clearBaselineBtn->setMinimumWidth(110);
+    clearBaselineBtn->setMinimumHeight(32);
+    clearBaselineBtn->setCursor(Qt::PointingHandCursor);
     clearBaselineBtn->setToolTip("清除基准线，恢复单组显示");
     clearBaselineBtn->setStyleSheet(
-        "QPushButton{background-color:#7C2D12;border:1px solid #EA580C;color:#FED7AA;border-radius:4px;}"
-        "QPushButton:hover{background-color:#9A3412;border-color:#FB923C;}"
-        "QPushButton:pressed{background-color:#C2410C;}");
+        "QPushButton { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #7C2D12, stop:1 #6B1A0A); "
+        "    color: #FED7AA; "
+        "    border: 1px solid #C2410C; "
+        "    border-radius: 7px; "
+        "    padding: 6px 16px; "
+        "    font-weight: 600; "
+        "    font-size: 13px;"
+        "}"
+        "QPushButton:hover { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #9A3412, stop:1 #7C2D12); "
+        "    color: #FEF3C7; "
+        "    border-color: #EA580C; "
+        "}"
+    );
     toolbar->addWidget(clearBaselineBtn);
     connect(clearBaselineBtn, &QPushButton::clicked, this, [this]() {
         if (metricsPanel_) {
@@ -305,13 +583,29 @@ void MainWindow::setupToolBar() {
 
     toolbar->addSeparator();
 
-    QPushButton* exportDataBtn = new QPushButton(" 📊  导出实验数据");
-    exportDataBtn->setMinimumWidth(130);
+    QPushButton* exportDataBtn = new QPushButton("📊 导出数据");
+    exportDataBtn->setMinimumWidth(110);
+    exportDataBtn->setMinimumHeight(32);
+    exportDataBtn->setCursor(Qt::PointingHandCursor);
     exportDataBtn->setToolTip("导出实验结果为 CSV/JSON 用于论文绘图 (Python/MATLAB)");
     exportDataBtn->setStyleSheet(
-        "QPushButton{background-color:#065F46;border:1px solid #10B981;color:#6EE7B7;border-radius:4px;font-weight:bold;}"
-        "QPushButton:hover{background-color:#047857;border-color:#34D399;}"
-        "QPushButton:pressed{background-color:#059669;}");
+        "QPushButton { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #064E3B, stop:1 #065F46); "
+        "    color: #6EE7B7; "
+        "    border: 1px solid #059669; "
+        "    border-radius: 7px; "
+        "    padding: 6px 16px; "
+        "    font-weight: 600; "
+        "    font-size: 13px;"
+        "}"
+        "QPushButton:hover { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #047857, stop:1 #064E3B); "
+        "    color: #A7F3D0; "
+        "    border-color: #10B981; "
+        "}"
+    );
     toolbar->addWidget(exportDataBtn);
     connect(exportDataBtn, &QPushButton::clicked, this, &MainWindow::onExportData);
 

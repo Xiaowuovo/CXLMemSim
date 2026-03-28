@@ -5,6 +5,8 @@
 
 #include "sidebar_widget.h"
 #include <QToolTip>
+#include <QLabel>
+#include <QFrame>
 
 SidebarWidget::SidebarWidget(QWidget *parent)
     : QWidget(parent)
@@ -18,48 +20,73 @@ SidebarWidget::SidebarWidget(QWidget *parent)
 SidebarWidget::~SidebarWidget() {}
 
 void SidebarWidget::setupUI() {
-    setFixedWidth(48);  // VSCode风格的窄侧边栏
-    setStyleSheet("QWidget { background-color: #0A0A0A; border-right: 1px solid #1A1A1A; }");
-
+    setFixedWidth(56);
+    setStyleSheet(
+        "QWidget { "
+        "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0A0A0A, stop:1 #000000); "
+        "    border-right: 1px solid #1A1A1A; "
+        "}"
+    );
+    
     mainLayout_ = new QVBoxLayout(this);
-    mainLayout_->setContentsMargins(0, 8, 0, 8);
-    mainLayout_->setSpacing(4);
-
+    mainLayout_->setContentsMargins(4, 12, 4, 12);
+    mainLayout_->setSpacing(2);
+    
     buttonGroup_ = new QButtonGroup(this);
     buttonGroup_->setExclusive(true);
-
-    // 拓扑编辑
-    auto* topoBtn = createIconButton("🗺", "拓扑编辑 (Topology)", TOPOLOGY);
+    
+    // ══════════════════════════════════════════════════════════
+    // 工作区分组 (WORKSPACE)
+    // ══════════════════════════════════════════════════════════
+    auto* workspaceLabel = new QLabel("WORK", this);
+    workspaceLabel->setAlignment(Qt::AlignCenter);
+    workspaceLabel->setStyleSheet(
+        "color: #555555; font-size: 9px; font-weight: 700; "
+        "letter-spacing: 1px; padding: 8px 0 4px 0;"
+    );
+    mainLayout_->addWidget(workspaceLabel);
+    
+    auto* topoBtn = createIconButton("⬢", "拓扑编辑\nTopology Editor", TOPOLOGY);
+    auto* cfgBtn = createIconButton("⚙", "系统配置\nSystem Config", CONFIG);
+    auto* wlBtn = createIconButton("⚡", "负载配置\nWorkload Config", WORKLOAD);
+    
     buttonGroup_->addButton(topoBtn, TOPOLOGY);
-    mainLayout_->addWidget(topoBtn);
-
-    // 配置树
-    auto* cfgBtn = createIconButton("⚙", "系统配置 (Config)", CONFIG);
     buttonGroup_->addButton(cfgBtn, CONFIG);
-    mainLayout_->addWidget(cfgBtn);
-
-    // 负载配置
-    auto* wlBtn = createIconButton("🚀", "负载配置 (Workload)", WORKLOAD);
     buttonGroup_->addButton(wlBtn, WORKLOAD);
+    
+    mainLayout_->addWidget(topoBtn);
+    mainLayout_->addWidget(cfgBtn);
     mainLayout_->addWidget(wlBtn);
-
-    mainLayout_->addSpacing(12);  // 分隔线效果
-
-    // 实验管理
-    auto* expBtn = createIconButton("⭐", "实验管理 (Experiment)", EXPERIMENT);
+    
+    // 分隔线
+    auto* divider1 = new QFrame(this);
+    divider1->setFrameShape(QFrame::HLine);
+    divider1->setStyleSheet("background: #1A1A1A; max-height: 1px; margin: 8px 8px;");
+    mainLayout_->addWidget(divider1);
+    
+    // ══════════════════════════════════════════════════════════
+    // 分析分组 (ANALYSIS)
+    // ══════════════════════════════════════════════════════════
+    auto* analysisLabel = new QLabel("TOOLS", this);
+    analysisLabel->setAlignment(Qt::AlignCenter);
+    analysisLabel->setStyleSheet(
+        "color: #555555; font-size: 9px; font-weight: 700; "
+        "letter-spacing: 1px; padding: 4px 0;"
+    );
+    mainLayout_->addWidget(analysisLabel);
+    
+    auto* expBtn = createIconButton("◈", "实验管理\nExperiments", EXPERIMENT);
+    auto* metBtn = createIconButton("◐", "性能监控\nMetrics", METRICS);
+    auto* logBtn = createIconButton("◫", "运行日志\nLogs", LOG);
+    
     buttonGroup_->addButton(expBtn, EXPERIMENT);
-    mainLayout_->addWidget(expBtn);
-
-    // 性能指标
-    auto* metricBtn = createIconButton("📊", "性能指标 (Metrics)", METRICS);
-    buttonGroup_->addButton(metricBtn, METRICS);
-    mainLayout_->addWidget(metricBtn);
-
-    // 运行日志
-    auto* logBtn = createIconButton("📝", "运行日志 (Log)", LOG);
+    buttonGroup_->addButton(metBtn, METRICS);
     buttonGroup_->addButton(logBtn, LOG);
+    
+    mainLayout_->addWidget(expBtn);
+    mainLayout_->addWidget(metBtn);
     mainLayout_->addWidget(logBtn);
-
+    
     mainLayout_->addStretch();
 
     // 默认选中拓扑编辑
@@ -70,33 +97,47 @@ void SidebarWidget::setupUI() {
 }
 
 QPushButton* SidebarWidget::createIconButton(const QString& icon, const QString& tooltip, PageType page) {
-    (void)page;  // 参数由buttonGroup管理，此处标记为有意未使用
+    (void)page;
     auto* btn = new QPushButton(icon, this);
     btn->setCheckable(true);
     btn->setToolTip(tooltip);
-    btn->setFixedSize(48, 48);
+    btn->setFixedSize(48, 44);
     btn->setCursor(Qt::PointingHandCursor);
     
     btn->setStyleSheet(
         "QPushButton {"
-        "    background-color: transparent;"
+        "    background: transparent;"
         "    border: none;"
         "    border-left: 2px solid transparent;"
+        "    border-radius: 6px;"
         "    color: #666666;"
-        "    font-size: 20px;"
-        "    text-align: center;"
+        "    font-size: 22px;"
+        "    font-weight: 300;"
+        "    padding: 0;"
+        "    margin: 2px 0;"
         "}"
         "QPushButton:hover {"
-        "    background-color: #111111;"
+        "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, "
+        "        stop:0 rgba(79, 195, 247, 0.08), "
+        "        stop:1 rgba(79, 195, 247, 0.02));"
         "    color: #EDEDED;"
+        "    border-left-color: #4FC3F7;"
         "}"
         "QPushButton:checked {"
-        "    background-color: #1A1A1A;"
-        "    border-left: 2px solid #3B82F6;"
-        "    color: #FFFFFF;"
+        "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, "
+        "        stop:0 rgba(79, 195, 247, 0.15), "
+        "        stop:1 rgba(79, 195, 247, 0.05));"
+        "    border-left: 2px solid #4FC3F7;"
+        "    color: #4FC3F7;"
+        "    font-weight: 500;"
+        "}"
+        "QPushButton:checked:hover {"
+        "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, "
+        "        stop:0 rgba(79, 195, 247, 0.20), "
+        "        stop:1 rgba(79, 195, 247, 0.08));"
         "}"
     );
-
+    
     return btn;
 }
 

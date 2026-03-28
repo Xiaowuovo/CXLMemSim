@@ -30,28 +30,75 @@ void ConfigTreeWidget::setupUI() {
     mainLayout->setContentsMargins(12, 12, 12, 12);
     mainLayout->setSpacing(12);
 
-    auto* titleLabel = new QLabel("CONFIGURATION", this);
+    // 专业级页面标题
+    auto* headerFrame = new QWidget(this);
+    auto* headerLayout = new QHBoxLayout(headerFrame);
+    headerLayout->setContentsMargins(0, 0, 0, 8);
+    headerLayout->setSpacing(12);
+    
+    auto* titleLabel = new QLabel("⚙ CONFIGURATION", this);
     titleLabel->setStyleSheet(
-        "color: #888888; font-weight: 700; font-size: 11px; letter-spacing: 1px; padding: 4px 2px;"
+        "color: #E8E8E8; font-weight: 600; font-size: 16px; padding: 8px 0;"
     );
-    mainLayout->addWidget(titleLabel);
+    headerLayout->addWidget(titleLabel);
+    
+    auto* subtitleLabel = new QLabel("系统参数配置", this);
+    subtitleLabel->setStyleSheet(
+        "color: #666666; font-size: 12px; padding: 8px 0;"
+    );
+    headerLayout->addWidget(subtitleLabel);
+    headerLayout->addStretch();
+    
+    mainLayout->addWidget(headerFrame);
 
     tree_ = new QTreeWidget(this);
-    tree_->setHeaderHidden(true); // 隐藏表头，采用无边框设计
+    tree_->setHeaderHidden(true);
     tree_->setColumnCount(2);
-    tree_->setColumnWidth(0, 160);
-    tree_->setIndentation(16);
+    tree_->setColumnWidth(0, 180);
+    tree_->setIndentation(20);
     tree_->setFocusPolicy(Qt::NoFocus);
+    tree_->setAnimated(true); // 启用展开/折叠动画
     tree_->setStyleSheet(
-        "QTreeWidget { background-color: transparent; color: #EDEDED; border: none; outline: none; }"
-        "QTreeWidget::item { padding: 6px; border-radius: 6px; margin: 2px 0; }"
-        "QTreeWidget::item:selected { background-color: #222222; }"
-        "QTreeWidget::item:hover:!selected { background-color: #111111; }"
+        "QTreeWidget { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #050505, stop:1 #000000); "
+        "    color: #E8E8E8; "
+        "    border: 1px solid #1A1A1A; "
+        "    border-radius: 10px; "
+        "    padding: 8px; "
+        "    outline: none; "
+        "}"
+        "QTreeWidget::item { "
+        "    padding: 10px 12px; "
+        "    border-radius: 6px; "
+        "    margin: 2px 4px; "
+        "    background: transparent; "
+        "    min-height: 28px;"
+        "}"
+        "QTreeWidget::item:selected { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #1E1E1E, stop:1 #141414); "
+        "    color: #FFFFFF;"
+        "    border-left: 3px solid #4FC3F7;"
+        "}"
+        "QTreeWidget::item:hover:!selected { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #0F0F0F, stop:1 #0A0A0A); "
+        "}"
+        "QTreeWidget::branch { background: transparent; }"
         "QTreeWidget::branch:has-siblings:!adjoins-item { border-image: none; }"
         "QTreeWidget::branch:has-siblings:adjoins-item { border-image: none; }"
         "QTreeWidget::branch:!has-children:!has-siblings:adjoins-item { border-image: none; }"
-        "QTreeWidget::branch:has-children:!has-siblings:closed, QTreeWidget::branch:closed:has-children:has-siblings { border-image: none; image: none; }"
-        "QTreeWidget::branch:open:has-children:!has-siblings, QTreeWidget::branch:open:has-children:has-siblings { border-image: none; image: none; }"
+        "QTreeWidget::branch:has-children:!has-siblings:closed, "
+        "QTreeWidget::branch:closed:has-children:has-siblings { "
+        "    border-image: none; "
+        "    image: none; "
+        "}"
+        "QTreeWidget::branch:open:has-children:!has-siblings, "
+        "QTreeWidget::branch:open:has-children:has-siblings { "
+        "    border-image: none; "
+        "    image: none; "
+        "}"
     );
 
     connect(tree_, &QTreeWidget::itemDoubleClicked,
@@ -63,27 +110,68 @@ void ConfigTreeWidget::setupUI() {
     auto* btnLayout = new QHBoxLayout();
     btnLayout->setSpacing(8);
 
-    QString ghostBtnStyle = 
-        "QPushButton { background: #111111; color: #EDEDED; border: 1px solid #333333; border-radius: 6px; padding: 8px; font-size: 12px; font-weight: 500; }"
-        "QPushButton:hover { background: #1A1A1A; border-color: #555555; }"
-        "QPushButton:pressed { background: #222222; }";
+    // 专业级操作按钮样式
+    QString modernBtnStyle = 
+        "QPushButton { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #1A1A1A, stop:1 #0F0F0F); "
+        "    color: #E8E8E8; "
+        "    border: 1px solid #2A2A2A; "
+        "    border-radius: 7px; "
+        "    padding: 10px 16px; "
+        "    font-size: 13px; "
+        "    font-weight: 500; "
+        "}"
+        "QPushButton:hover { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #252525, stop:1 #1A1A1A); "
+        "    border-color: #4FC3F7; "
+        "    color: #FFFFFF;"
+        "}"
+        "QPushButton:pressed { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #0F0F0F, stop:1 #1A1A1A); "
+        "    border-color: #4FC3F7;"
+        "}";
 
-    addDeviceButton_ = new QPushButton("+ Device", this);
-    addDeviceButton_->setStyleSheet(ghostBtnStyle);
+    addDeviceButton_ = new QPushButton("➕ Add Device", this);
+    addDeviceButton_->setStyleSheet(modernBtnStyle);
+    addDeviceButton_->setCursor(Qt::PointingHandCursor);
     connect(addDeviceButton_, &QPushButton::clicked, this, &ConfigTreeWidget::onAddDevice);
     btnLayout->addWidget(addDeviceButton_);
 
-    addSwitchButton_ = new QPushButton("+ Switch", this);
-    addSwitchButton_->setStyleSheet(ghostBtnStyle);
+    addSwitchButton_ = new QPushButton("➕ Add Switch", this);
+    addSwitchButton_->setStyleSheet(modernBtnStyle);
+    addSwitchButton_->setCursor(Qt::PointingHandCursor);
     connect(addSwitchButton_, &QPushButton::clicked, this, &ConfigTreeWidget::onAddSwitch);
     btnLayout->addWidget(addSwitchButton_);
 
-    removeButton_ = new QPushButton("Remove", this);
-    removeButton_->setStyleSheet(
-        "QPushButton { background: transparent; color: #888888; border: 1px dashed #333333; border-radius: 6px; padding: 8px; font-size: 12px; font-weight: 500; }"
-        "QPushButton:hover { background: #2A0808; color: #F87171; border: 1px solid #7F1D1D; }"
-        "QPushButton:pressed { background: #450A0A; }"
-    );
+    // 删除按钮使用警告色
+    QString removeBtnStyle = 
+        "QPushButton { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #1A0A0A, stop:1 #0F0505); "
+        "    color: #F87171; "
+        "    border: 1px solid #3A1A1A; "
+        "    border-radius: 7px; "
+        "    padding: 10px 16px; "
+        "    font-size: 13px; "
+        "    font-weight: 500; "
+        "}"
+        "QPushButton:hover { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #2A1515, stop:1 #1A0A0A); "
+        "    border-color: #EF4444; "
+        "    color: #FCA5A5;"
+        "}"
+        "QPushButton:pressed { "
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 #0F0505, stop:1 #1A0A0A); "
+        "}";
+    
+    removeButton_ = new QPushButton("🗑 Remove", this);
+    removeButton_->setStyleSheet(removeBtnStyle);
+    removeButton_->setCursor(Qt::PointingHandCursor);
     connect(removeButton_, &QPushButton::clicked, this, &ConfigTreeWidget::onRemoveSelected);
     btnLayout->addWidget(removeButton_);
 
