@@ -72,7 +72,7 @@ private:
     SidebarWidget* sidebar_;
     QStackedWidget* pageStack_;
     
-    // 页面组件
+    // 页面组件（顺序必须与构造函数初始化列表一致）
     TopologyEditorWidget* topologyEditor_;
     ConfigTreeWidget* configTree_;
     WorkloadConfigWidget* workloadWidget_;
@@ -87,11 +87,11 @@ private:
     QLabel* statusLabel_;
 
     // 后端组件
-    cxlsim::CXLSimConfig config_;
     std::unique_ptr<cxlsim::TimingAnalyzer> analyzer_;
     QTimer* updateTimer_;
-
-    // 状态
+    
+    // 配置和状态
+    cxlsim::CXLSimConfig config_;
     QString currentConfigFile_;
     bool simulationRunning_;
 };

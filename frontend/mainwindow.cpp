@@ -14,6 +14,8 @@
 #include <QHBoxLayout>
 #include <QWidget>
 #include <QScrollArea>
+#include <QFrame>
+#include <QLabel>
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -21,6 +23,7 @@
 #include <QMenuBar>
 #include <QStatusBar>
 #include <QTimer>
+#include <QStringList>
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QFile>
@@ -33,22 +36,19 @@
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-    , centralTabs_(nullptr)
+    , sidebar_(nullptr)
+    , pageStack_(nullptr)
     , topologyEditor_(nullptr)
-    , configDock_(nullptr)
-    , metricsDock_(nullptr)
-    , logDock_(nullptr)
-    , expDock_(nullptr)
-    , workloadDock_(nullptr)
     , configTree_(nullptr)
+    , workloadWidget_(nullptr)
+    , expPanel_(nullptr)
     , metricsPanel_(nullptr)
     , logView_(nullptr)
-    , expPanel_(nullptr)
-    , workloadWidget_(nullptr)
     , startButton_(nullptr)
     , stopButton_(nullptr)
     , resetButton_(nullptr)
     , statusLabel_(nullptr)
+    , analyzer_(nullptr)
     , updateTimer_(nullptr)
     , simulationRunning_(false)
 {

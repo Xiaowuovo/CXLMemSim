@@ -70,6 +70,7 @@ void SidebarWidget::setupUI() {
 }
 
 QPushButton* SidebarWidget::createIconButton(const QString& icon, const QString& tooltip, PageType page) {
+    (void)page;  // 参数由buttonGroup管理，此处标记为有意未使用
     auto* btn = new QPushButton(icon, this);
     btn->setCheckable(true);
     btn->setToolTip(tooltip);
