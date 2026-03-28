@@ -28,12 +28,16 @@ public:
 public slots:
     void updateStats(const cxlsim::EpochStats& stats);
     void reset();
+    void pinCurrentAsBaseline();    ///< 固定当前数据为基准（科研对比）
+    void clearBaseline();            ///< 清除基准曲线
 
 private:
     void setupUI();
 
     // Display widgets
     QLCDNumber* epochNumber_;
+    QLabel* bandwidthDisplay_;     ///< 实时带宽数字仪表盘
+    QLabel* latencyDisplay_;       ///< 实时延迟数字仪表盘
     QLabel* totalAccesses_;
     QLabel* l3Misses_;
     QLabel* cxlAccesses_;

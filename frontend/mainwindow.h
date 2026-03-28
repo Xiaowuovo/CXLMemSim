@@ -21,6 +21,7 @@ class TopologyEditorWidget;
 class ConfigTreeWidget;
 class MetricsPanel;
 class ExperimentPanelWidget;
+class WorkloadConfigWidget;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -73,12 +74,14 @@ private:
     QDockWidget* metricsDock_;
     QDockWidget* logDock_;
     QDockWidget* expDock_;
+    QDockWidget* workloadDock_;     ///< 负载配置面板
 
     // 子控件
     ConfigTreeWidget* configTree_;
     MetricsPanel* metricsPanel_;
     QTextEdit* logView_;
     ExperimentPanelWidget* expPanel_;
+    WorkloadConfigWidget* workloadWidget_;  ///< 负载配置组件
 
     // 工具栏控件
     QPushButton* startButton_;

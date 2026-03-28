@@ -61,9 +61,10 @@ struct CXLDeviceConfig {
     std::string type;           ///< "Type1", "Type2", "Type3"
     uint64_t capacity_gb;
     std::string link_gen;       ///< "Gen4", "Gen5"
-    std::string link_width;     ///< "x8", "x16"
+    std::string link_width;     ///< "x4", "x8", "x16"（科研关键：影响带宽瓶颈）
     double bandwidth_gbps;
     double base_latency_ns;     ///< Device-specific latency
+    double media_latency_ns;    ///< 介质延迟（DRAM vs NVM，科研关键）
 
     // CXL.mem specific
     bool supports_hdm;          ///< Host-managed Device Memory
@@ -71,7 +72,7 @@ struct CXLDeviceConfig {
 
     CXLDeviceConfig()
         : type("Type3"), capacity_gb(128), link_gen("Gen5"), link_width("x16"),
-          bandwidth_gbps(64.0), base_latency_ns(170.0),
+          bandwidth_gbps(64.0), base_latency_ns(170.0), media_latency_ns(90.0),
           supports_hdm(true), supports_coherency(false) {}
 };
 
@@ -113,6 +114,42 @@ struct MemoryPolicyConfig {
 };
 
 /**
+ * @brief Workload access pattern
+ */
+enum class AccessPattern {
+    SEQUENTIAL,     ///< Sequential access
+    RANDOM,         ///< Random access
+    STRIDE,         ///< Strided access
+    MIXED           ///< Mixed pattern
+};
+
+/**
+ * @brief Workload configuration (科研关键)
+ */
+struct WorkloadConfig {
+    // Traffic mode
+    bool trace_driven;              ///< true=Trace file, false=Synthetic
+    std::string trace_file_path;    ///< Path to trace file (CSV/TXT)
+    
+    // Synthetic traffic parameters
+    AccessPattern access_pattern;   ///< Access pattern
+    double read_ratio;              ///< Read percentage (0.0-1.0)
+    double injection_rate_gbps;     ///< Traffic injection rate GB/s
+    uint64_t working_set_gb;        ///< Working set size
+    int stride_bytes;               ///< Stride size for STRIDE pattern
+    
+    // Temporal parameters
+    double duration_sec;            ///< Workload duration (seconds)
+    int num_threads;                ///< Number of concurrent threads
+    
+    WorkloadConfig()
+        : trace_driven(false), trace_file_path(""),
+          access_pattern(AccessPattern::RANDOM), read_ratio(0.7),
+          injection_rate_gbps(10.0), working_set_gb(32), stride_bytes(4096),
+          duration_sec(10.0), num_threads(1) {}
+};
+
+/**
  * @brief Simulation parameters
  */
 struct SimulationConfig {
@@ -144,6 +181,7 @@ struct CXLSimConfig {
     std::vector<ConnectionConfig> connections;
 
     MemoryPolicyConfig memory_policy;
+    WorkloadConfig workload;        ///< 负载配置（科研关键）
     SimulationConfig simulation;
 
     CXLSimConfig() = default;

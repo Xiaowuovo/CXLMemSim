@@ -26,6 +26,8 @@ static QLabel* makeValueLabel(QWidget* parent, const QString& color = "#EDEDED")
 MetricsPanel::MetricsPanel(QWidget *parent)
     : QWidget(parent)
     , epochNumber_(nullptr)
+    , bandwidthDisplay_(nullptr)
+    , latencyDisplay_(nullptr)
     , totalAccesses_(nullptr)
     , l3Misses_(nullptr)
     , cxlAccesses_(nullptr)
@@ -37,10 +39,10 @@ MetricsPanel::MetricsPanel(QWidget *parent)
     , tieringRatio_(nullptr)
     , linkUtilBar_(nullptr)
     , missRate_(nullptr)
-    , chartTabs_(nullptr)
     , latencyChart_(nullptr)
     , bandwidthChart_(nullptr)
     , missRateChart_(nullptr)
+    , chartTabs_(nullptr)
 {
     setupUI();
 }
@@ -73,7 +75,67 @@ void MetricsPanel::setupUI() {
     
     mainLayout->addWidget(modeFrame);
     
-    mainLayout->addWidget(createEpochGroup());
+    // ── 科研关键指标：带宽和延迟仪表盘（最突出）──
+    auto* dashboardFrame = new QFrame(this);
+    dashboardFrame->setStyleSheet("QFrame { background: #0A0A0A; border: 1px solid #222222; border-radius: 6px; padding: 12px; }");
+    auto* dashLayout = new QHBoxLayout(dashboardFrame);
+    dashLayout->setSpacing(16);
+    
+    // 带宽仪表
+    auto* bwBox = new QVBoxLayout();
+    auto* bwLabel = new QLabel("实时带宽 (GB/s)", this);
+    bwLabel->setStyleSheet("color: #888888; font-size: 10px; text-align: center;");
+    bwLabel->setAlignment(Qt::AlignCenter);
+    bwBox->addWidget(bwLabel);
+    
+    bandwidthDisplay_ = new QLabel("0.0", this);
+    bandwidthDisplay_->setStyleSheet("color: #4ADE80; font-size: 28px; font-weight: bold; text-align: center;");
+    bandwidthDisplay_->setAlignment(Qt::AlignCenter);
+    bwBox->addWidget(bandwidthDisplay_);
+    dashLayout->addLayout(bwBox, 1);
+    
+    // 分隔线
+    auto* vline = new QFrame(this);
+    vline->setFrameShape(QFrame::VLine);
+    vline->setStyleSheet("border: none; background: #333333; max-width: 1px;");
+    dashLayout->addWidget(vline);
+    
+    // 延迟仪表
+    auto* latBox = new QVBoxLayout();
+    auto* latLabel = new QLabel("平均延迟 (ns)", this);
+    latLabel->setStyleSheet("color: #888888; font-size: 10px; text-align: center;");
+    latLabel->setAlignment(Qt::AlignCenter);
+    latBox->addWidget(latLabel);
+    
+    latencyDisplay_ = new QLabel("0.0", this);
+    latencyDisplay_->setStyleSheet("color: #FBBF24; font-size: 28px; font-weight: bold; text-align: center;");
+    latencyDisplay_->setAlignment(Qt::AlignCenter);
+    latBox->addWidget(latencyDisplay_);
+    dashLayout->addLayout(latBox, 1);
+    
+    mainLayout->addWidget(dashboardFrame);
+    
+    // ── Epoch显示（缩小，移至顶部状态栏样式）──
+    auto* epochFrame = new QFrame(this);
+    epochFrame->setStyleSheet("QFrame { background: transparent; border: none; }");
+    auto* epochLayout = new QHBoxLayout(epochFrame);
+    epochLayout->setContentsMargins(0, 4, 0, 4);
+    
+    auto* epochLabel = new QLabel("Epoch:", this);
+    epochLabel->setStyleSheet("color: #666666; font-size: 11px;");
+    epochLayout->addWidget(epochLabel);
+    
+    epochNumber_ = new QLCDNumber(this);
+    epochNumber_->setDigitCount(6);
+    epochNumber_->setSegmentStyle(QLCDNumber::Flat);
+    epochNumber_->setMaximumHeight(24);  // 缩小高度
+    epochNumber_->setStyleSheet(
+        "QLCDNumber { background: #111111; color: #4ADE80; border: 1px solid #222222; border-radius: 3px; }");
+    epochLayout->addWidget(epochNumber_);
+    epochLayout->addStretch();
+    
+    mainLayout->addWidget(epochFrame);
+    
     mainLayout->addWidget(createAccessGroup());
     mainLayout->addWidget(createLatencyGroup());
     mainLayout->addWidget(createChartGroup());
@@ -296,6 +358,14 @@ QGroupBox* MetricsPanel::createChartGroup() {
 void MetricsPanel::updateStats(const cxlsim::EpochStats& stats) {
     epochNumber_->display(static_cast<int>(stats.epoch_number));
 
+    // ── 科研关键：实时带宽和延迟仪表盘 ──
+    double bw = 0.0;
+    if (stats.total_accesses > 0)
+        bw = (stats.total_accesses * 64.0) / 0.01 / 1e9;  // GB/s
+    bandwidthDisplay_->setText(QString::number(bw, 'f', 2));
+    
+    latencyDisplay_->setText(QString::number(stats.avg_latency_ns, 'f', 1));
+
     totalAccesses_->setText(QString::number(stats.total_accesses));
     l3Misses_->setText(QString::number(stats.l3_misses));
     cxlAccesses_->setText(QString::number(stats.cxl_accesses));
@@ -361,4 +431,17 @@ void MetricsPanel::reset() {
     latencyChart_->clear();
     bandwidthChart_->clear();
     missRateChart_->clear();
+}
+
+void MetricsPanel::pinCurrentAsBaseline() {
+    // 固定当前所有图表为基准（科研多组对比）
+    if (latencyChart_) latencyChart_->pinCurrentAsBaseline("拓扑A");
+    if (bandwidthChart_) bandwidthChart_->pinCurrentAsBaseline("拓扑A");
+    if (missRateChart_) missRateChart_->pinCurrentAsBaseline("拓扑A");
+}
+
+void MetricsPanel::clearBaseline() {
+    if (latencyChart_) latencyChart_->clearBaseline();
+    if (bandwidthChart_) bandwidthChart_->clearBaseline();
+    if (missRateChart_) missRateChart_->clearBaseline();
 }

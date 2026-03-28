@@ -16,6 +16,8 @@ RealTimeChartWidget::RealTimeChartWidget(QWidget *parent)
     , lineColor_(Qt::blue)
     , maxPoints_(60) // Default 60 points (e.g., 60 seconds)
     , maxValue_(100.0)
+    , baselineLabel_("")
+    , baselineColor_(QColor(0x88, 0x88, 0x88, 180))  // 半透明灰色
 {
     setBackgroundRole(QPalette::Base);
     setAutoFillBackground(true);
@@ -71,6 +73,18 @@ void RealTimeChartWidget::clear() {
     update();
 }
 
+void RealTimeChartWidget::pinCurrentAsBaseline(const QString& label) {
+    baseline_ = data_;
+    baselineLabel_ = label.isEmpty() ? "Baseline" : label;
+    update();
+}
+
+void RealTimeChartWidget::clearBaseline() {
+    baseline_.clear();
+    baselineLabel_.clear();
+    update();
+}
+
 void RealTimeChartWidget::paintEvent(QPaintEvent *event) {
     Q_UNUSED(event);
 
@@ -110,6 +124,43 @@ void RealTimeChartWidget::paintEvent(QPaintEvent *event) {
     painter.setPen(Qt::darkGray);
     painter.drawText(QRect(0, graphY - 10, padding, 20), Qt::AlignRight | Qt::AlignVCenter, QString::number(maxValue_, 'f', 0));
     painter.drawText(QRect(0, graphY + graphH - 10, padding, 20), Qt::AlignRight | Qt::AlignVCenter, "0");
+
+    // ── 绘制基准曲线（科研对比关键）──
+    if (!baseline_.isEmpty() && baseline_.size() > 1) {
+        QPainterPath baselinePath;
+        double xStep = (double)graphW / (maxPoints_ - 1);
+        
+        for (int i = 0; i < baseline_.size(); ++i) {
+            double x = graphX + (i * xStep);
+            if (baseline_.size() < maxPoints_) {
+                x = graphX + graphW - ((baseline_.size() - 1 - i) * xStep);
+            }
+            
+            double normalizedY = baseline_[i] / maxValue_;
+            double y = graphY + graphH - (normalizedY * graphH);
+            
+            if (i == 0) {
+                baselinePath.moveTo(x, y);
+            } else {
+                baselinePath.lineTo(x, y);
+            }
+        }
+        
+        // 虚线样式，灰色半透明
+        painter.setPen(QPen(baselineColor_, 2, Qt::DashLine));
+        painter.drawPath(baselinePath);
+        
+        // 基准标签
+        if (!baselineLabel_.isEmpty()) {
+            painter.setPen(baselineColor_);
+            QFont labelFont = font();
+            labelFont.setPointSize(9);
+            painter.setFont(labelFont);
+            painter.drawText(QRect(graphX + 10, graphY + 5, 100, 20), 
+                           Qt::AlignLeft | Qt::AlignVCenter, 
+                           "📌 " + baselineLabel_);
+        }
+    }
 
     // Draw data
     if (data_.size() > 1) {

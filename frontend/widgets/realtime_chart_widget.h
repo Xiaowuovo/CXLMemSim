@@ -22,6 +22,11 @@ public:
     void setLineColor(const QColor& color);
     void setMaxPoints(int count);
     void clear();
+    
+    // ── 科研多组对比功能 ──
+    void pinCurrentAsBaseline(const QString& label = "Baseline");  ///< 固定当前曲线为基准
+    void clearBaseline();                                          ///< 清除基准曲线
+    bool hasBaseline() const { return !baseline_.isEmpty(); }      ///< 是否有基准曲线
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -33,6 +38,11 @@ private:
     QVector<double> data_;
     int maxPoints_;
     double maxValue_;
+    
+    // 基准曲线（用于对比）
+    QVector<double> baseline_;
+    QString baselineLabel_;
+    QColor baselineColor_;
 };
 
 #endif // REALTIME_CHART_WIDGET_H

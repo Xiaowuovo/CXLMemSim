@@ -8,6 +8,7 @@
 #include "widgets/config_tree_widget.h"
 #include "widgets/metrics_panel.h"
 #include "widgets/experiment_panel_widget.h"
+#include "widgets/workload_config_widget.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -33,10 +34,12 @@ MainWindow::MainWindow(QWidget *parent)
     , metricsDock_(nullptr)
     , logDock_(nullptr)
     , expDock_(nullptr)
+    , workloadDock_(nullptr)
     , configTree_(nullptr)
     , metricsPanel_(nullptr)
     , logView_(nullptr)
     , expPanel_(nullptr)
+    , workloadWidget_(nullptr)
     , startButton_(nullptr)
     , stopButton_(nullptr)
     , resetButton_(nullptr)
@@ -243,14 +246,49 @@ void MainWindow::setupToolBar() {
 
     toolbar->addSeparator();
 
-    QPushButton* exportDataBtn = new QPushButton(" \u2318  \u5bfc\u51fa\u5b9e\u9a8c\u6570\u636e");
+    // ── 科研多组对比按钮 ──
+    QPushButton* pinBaselineBtn = new QPushButton(" \u2318  固定基准");
+    pinBaselineBtn->setMinimumWidth(100);
+    pinBaselineBtn->setToolTip("将当前实验数据固定为基准线，用于多组对比（控制变量法）");
+    pinBaselineBtn->setStyleSheet(
+        "QPushButton{background-color:#1E40AF;border:1px solid #3B82F6;color:#DBEAFE;border-radius:4px;}"
+        "QPushButton:hover{background-color:#1D4ED8;border-color:#60A5FA;}"
+        "QPushButton:pressed{background-color:#2563EB;}");
+
+    toolbar->addWidget(pinBaselineBtn);
+    connect(pinBaselineBtn, &QPushButton::clicked, this, [this]() {
+        if (metricsPanel_) {
+            metricsPanel_->pinCurrentAsBaseline();
+            updateStatus("✓ 当前数据已固定为基准，可运行新实验对比");
+            if (logView_) logView_->append("[INFO] 📌 基准曲线已固定，可修改拓扑/负载后重新运行对比");
+        }
+    });
+
+    QPushButton* clearBaselineBtn = new QPushButton(" 🗑  清除基准");
+    clearBaselineBtn->setMinimumWidth(100);
+    clearBaselineBtn->setToolTip("清除基准线，恢复单组显示");
+    clearBaselineBtn->setStyleSheet(
+        "QPushButton{background-color:#7C2D12;border:1px solid #EA580C;color:#FED7AA;border-radius:4px;}"
+        "QPushButton:hover{background-color:#9A3412;border-color:#FB923C;}"
+        "QPushButton:pressed{background-color:#C2410C;}");
+    toolbar->addWidget(clearBaselineBtn);
+    connect(clearBaselineBtn, &QPushButton::clicked, this, [this]() {
+        if (metricsPanel_) {
+            metricsPanel_->clearBaseline();
+            updateStatus("基准曲线已清除");
+            if (logView_) logView_->append("[INFO] 🗑 基准曲线已清除");
+        }
+    });
+
+    toolbar->addSeparator();
+
+    QPushButton* exportDataBtn = new QPushButton(" 📊  导出实验数据");
     exportDataBtn->setMinimumWidth(130);
     exportDataBtn->setToolTip("导出实验结果为 CSV/JSON 用于论文绘图 (Python/MATLAB)");
     exportDataBtn->setStyleSheet(
         "QPushButton{background-color:#065F46;border:1px solid #10B981;color:#6EE7B7;border-radius:4px;font-weight:bold;}"
         "QPushButton:hover{background-color:#047857;border-color:#34D399;}"
         "QPushButton:pressed{background-color:#059669;}");
-
     toolbar->addWidget(exportDataBtn);
     connect(exportDataBtn, &QPushButton::clicked, this, &MainWindow::onExportData);
 
@@ -290,13 +328,23 @@ void MainWindow::setupCentralWidget() {
 }
 
 void MainWindow::setupDockWidgets() {
-    // 左侧：配置树
+    // 左侧上：配置树
     configDock_ = new QDockWidget(" CXL 系统配置", this);
     configDock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-    configDock_->setMinimumWidth(260);
+    configDock_->setMinimumWidth(280);
     configTree_ = new ConfigTreeWidget(this);
     configDock_->setWidget(configTree_);
     addDockWidget(Qt::LeftDockWidgetArea, configDock_);
+
+    // 左侧下：负载配置（科研关键）
+    workloadDock_ = new QDockWidget(" 🚀 负载配置 (Workload)", this);
+    workloadDock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    workloadDock_->setMinimumWidth(280);
+    workloadWidget_ = new WorkloadConfigWidget(this);
+    workloadDock_->setWidget(workloadWidget_);
+    addDockWidget(Qt::LeftDockWidgetArea, workloadDock_);
+    
+    splitDockWidget(configDock_, workloadDock_, Qt::Vertical);
 
     // 右侧：性能指标
     metricsDock_ = new QDockWidget(" 性能指标", this);
@@ -418,13 +466,67 @@ void MainWindow::onExit() { close(); }
 
 // \u6a21\u62df\u63a7\u5236\u69fd\u51fd\u6570
 void MainWindow::onStartSimulation() {
-    if (logView_) logView_->append("[INFO] \u6b63\u5728\u521d\u59cb\u5316\u6a21\u62df\u5f15\u64ce...");
+    // ── 状态机前置校验（科研可信度关键）──
+    
+    // 1. 拓扑完整性验证
+    if (config_.cxl_devices.empty()) {
+        QMessageBox::warning(this, "⚠️ 拓扑不完整",
+            "未配置任何 CXL 设备。\n\n"
+            "请在拓扑图中添加至少一个 CXL_MEM 设备后再启动模拟。");
+        if (logView_) logView_->append("[WARN] 拓扑验证失败：无CXL设备");
+        return;
+    }
+    
+    if (config_.connections.empty()) {
+        QMessageBox::warning(this, "⚠️ 拓扑不完整",
+            "拓扑图中没有任何连接。\n\n"
+            "请将 Root Complex、Switch 和 CXL 设备连接后再启动。");
+        if (logView_) logView_->append("[WARN] 拓扑验证失败：无连接");
+        return;
+    }
+    
+    // 2. 负载配置验证（核心）
+    if (workloadWidget_ && !workloadWidget_->isWorkloadValid()) {
+        QString error = workloadWidget_->getValidationError();
+        QMessageBox::critical(this, "❌ 负载配置错误",
+            QString("无法启动模拟：%1\n\n"
+                    "科研提示：没有负载注入，仿真引擎将没有任何内存访问事件，\n"
+                    "Epoch 会保持为 0，所有指标为空。\n\n"
+                    "请先在左侧 '🚀 负载配置' 面板中配置 Synthetic 或 Trace-Driven 负载。").arg(error));
+        if (logView_) logView_->append(QString("[ERROR] 负载验证失败: %1").arg(error));
+        return;
+    }
+    
+    // 3. 同步负载配置到主配置
+    if (workloadWidget_) {
+        config_.workload = workloadWidget_->getWorkloadConfig();
+        if (logView_) {
+            if (config_.workload.trace_driven) {
+                logView_->append(QString("[INFO] 负载模式: Trace-Driven (%1)")
+                    .arg(QString::fromStdString(config_.workload.trace_file_path)));
+            } else {
+                logView_->append(QString("[INFO] 负载模式: Synthetic (%1, %.1f GB/s, %2 threads)")
+                    .arg(config_.workload.access_pattern == cxlsim::AccessPattern::RANDOM ? "Random" : "Sequential")
+                    .arg(config_.workload.injection_rate_gbps)
+                    .arg(config_.workload.num_threads));
+            }
+        }
+    }
+
+    if (logView_) logView_->append("[INFO] ✓ 拓扑完整性验证通过");
+    if (logView_) logView_->append("[INFO] ✓ 负载配置验证通过");
+    if (logView_) logView_->append("[INFO] 正在初始化模拟引擎...");
 
     if (!analyzer_) {
         analyzer_ = std::make_unique<cxlsim::TimingAnalyzer>();
         if (!analyzer_->initialize(config_)) {
-            QMessageBox::critical(this, "\u9519\u8bef", "\u6a21\u62df\u5f15\u64ce\u521d\u59cb\u5316\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5\u914d\u7f6e\u6587\u4ef6");
-            if (logView_) logView_->append("[ERROR] \u5f15\u64ce\u521d\u59cb\u5316\u5931\u8d25");
+            QMessageBox::critical(this, "错误", 
+                "模拟引擎初始化失败。\n\n可能原因：\n"
+                "• 拓扑配置参数不合法\n"
+                "• 负载配置超出硬件限制\n"
+                "• 内部资源分配失败\n\n"
+                "请检查配置参数后重试。");
+            if (logView_) logView_->append("[ERROR] 引擎初始化失败");
             analyzer_.reset();
             return;
         }
@@ -434,11 +536,11 @@ void MainWindow::onStartSimulation() {
     if (startButton_) startButton_->setEnabled(false);
     if (stopButton_)  stopButton_->setEnabled(true);
     if (statusLabel_) {
-        statusLabel_->setText("\u8fd0\u884c\u4e2d");
+        statusLabel_->setText("运行中");
         statusLabel_->setStyleSheet("color:#FF8A65; font-weight:bold; font-size:12px;");
     }
-    updateStatus("\u6a21\u62df\u8fd0\u884c\u4e2d...");
-    if (logView_) logView_->append("[INFO] CXL \u5185\u5b58\u6a21\u62df\u5df2\u542f\u52a8");
+    updateStatus("模拟运行中...");
+    if (logView_) logView_->append("[INFO] ✅ CXL 内存模拟已启动 (Epoch 即将开始跳动)");
 }
 
 void MainWindow::onStopSimulation() {
