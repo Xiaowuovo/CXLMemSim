@@ -105,6 +105,7 @@ public:
 
     void setBandwidth(double gbps) { bandwidth_gbps_ = gbps; }
     void setLatency(double ns) { latency_ns_ = ns; }
+    void setUtilization(double pct) { utilization_pct_ = pct; update(); }
     
     ComponentItem* fromComponent() const { return from_; }
     ComponentItem* toComponent() const { return to_; }
@@ -112,8 +113,9 @@ public:
 private:
     ComponentItem* from_;
     ComponentItem* to_;
-    double bandwidth_gbps_;
-    double latency_ns_;
+    double bandwidth_gbps_;  ///< 物理最大带宽（静态配置）
+    double latency_ns_;      ///< 链路延迟（静态配置）
+    double utilization_pct_; ///< 实时利用率 0-100%
 };
 
 /**
@@ -134,6 +136,7 @@ public:
     void finishConnection(ComponentItem* to);
 
     void updateDeviceMetrics(const QString& deviceId, const DeviceMetrics& m);
+    void updateLinkUtilization(const QString& fromId, const QString& toId, double utilizPct);
     void clearAllMetrics();
     void setZoomLevel(double factor);
     double zoomLevel() const;

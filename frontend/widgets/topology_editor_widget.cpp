@@ -124,10 +124,28 @@ void TopologyEditorWidget::updateDeviceMetrics(const QString& deviceId, const De
     }
 }
 
+void TopologyEditorWidget::updateLinkUtilization(const QString& fromId, const QString& toId, double utilizPct) {
+    // 查找连接 fromId -> toId 的链路
+    for (auto* link : links_) {
+        if (link->fromComponent()->id() == fromId && link->toComponent()->id() == toId) {
+            link->setUtilization(utilizPct);
+            return;
+        }
+        // 也检查反向连接（双向链路）
+        if (link->fromComponent()->id() == toId && link->toComponent()->id() == fromId) {
+            link->setUtilization(utilizPct);
+            return;
+        }
+    }
+}
+
 void TopologyEditorWidget::clearAllMetrics() {
     DeviceMetrics empty;
     for (auto* comp : components_)
         comp->setMetrics(empty);
+    // 清除链路利用率
+    for (auto* link : links_)
+        link->setUtilization(0.0);
 }
 
 void TopologyEditorWidget::setZoomLevel(double factor) {
@@ -741,7 +759,8 @@ QVariant ComponentItem::itemChange(GraphicsItemChange change, const QVariant& va
 // ══════════════════════════════════════════════════════════════════════════════
 
 LinkItem::LinkItem(ComponentItem* from, ComponentItem* to, QGraphicsItem* parent)
-    : QGraphicsItem(parent), from_(from), to_(to), bandwidth_gbps_(64.0), latency_ns_(40.0)
+    : QGraphicsItem(parent), from_(from), to_(to), 
+      bandwidth_gbps_(64.0), latency_ns_(40.0), utilization_pct_(0.0)
 {
     setZValue(-1);
     setFlag(ItemIsSelectable);
@@ -785,32 +804,54 @@ void LinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, 
     painter->setBrush(lineColor);
     painter->drawPolygon(arrowHead);
 
-    // 悬浮式胶囊标签 (Pill Badge)
+    // 悬浮式胶囊标签 (Pill Badge) - 双行显示
     if (bandwidth_gbps_ > 0) {
         QPointF midPoint = (p1 + p2) / 2;
-        QString label = QString("%1 GB/s • %2 ns")
-            .arg(bandwidth_gbps_, 0, 'f', 0)
-            .arg(latency_ns_, 0, 'f', 0);
         
-        QFont font("JetBrains Mono, Consolas", 8);
-        painter->setFont(font);
+        // 第一行：物理配置（静态）
+        QString configLine = QString("%1 GB/s • %2 ns")
+            .arg(bandwidth_gbps_, 0, 'f', 0).arg(latency_ns_, 0, 'f', 0);
         
-        QFontMetrics fm(font);
-        int textWidth = fm.horizontalAdvance(label);
-        int textHeight = fm.height();
+        // 第二行：实时利用率（动态）
+        QString utilizLine = utilization_pct_ > 0
+            ? QString("▸ %1%").arg(utilization_pct_, 0, 'f', 0)
+            : QString("idle");
         
-        // 标签边框
-        QRectF labelRect(-textWidth/2 - 8, -textHeight/2 - 4, textWidth + 16, textHeight + 8);
+        QFont configFont("JetBrains Mono, Consolas", 7);
+        QFont utilizFont("Inter, -apple-system", 9, QFont::Bold);
+        
+        QFontMetrics configFm(configFont);
+        QFontMetrics utilizFm(utilizFont);
+        
+        int w1 = configFm.horizontalAdvance(configLine);
+        int w2 = utilizFm.horizontalAdvance(utilizLine);
+        int maxWidth = std::max(w1, w2);
+        int totalHeight = configFm.height() + utilizFm.height() + 4;
+        
+        QRectF labelRect(-maxWidth/2 - 10, -totalHeight/2 - 4, maxWidth + 20, totalHeight + 8);
         labelRect.moveCenter(midPoint);
         
-        // 绘制毛玻璃质感底色
+        // 毛玻璃质感底色
         painter->setPen(QPen(QColor(0x33, 0x33, 0x33), 1));
-        painter->setBrush(QColor(0x0A, 0x0A, 0x0A, 220)); // 半透明黑
-        painter->drawRoundedRect(labelRect, labelRect.height()/2, labelRect.height()/2);
+        painter->setBrush(QColor(0x0A, 0x0A, 0x0A, 220));
+        painter->drawRoundedRect(labelRect, labelRect.height()/2.5, labelRect.height()/2.5);
         
-        // 绘制文本
-        painter->setPen(active ? QColor(0x60, 0xA5, 0xFA) : QColor(0x88, 0x88, 0x88));
-        painter->drawText(labelRect, Qt::AlignCenter, label);
+        // 绘制第一行：配置参数（灰色小字）
+        painter->setFont(configFont);
+        painter->setPen(QColor(0x66, 0x66, 0x66));
+        QRectF line1Rect(labelRect.left(), labelRect.top() + 4, labelRect.width(), configFm.height());
+        painter->drawText(line1Rect, Qt::AlignCenter, configLine);
+        
+        // 绘制第二行：实时利用率（彩色粗体）
+        painter->setFont(utilizFont);
+        QColor utilizColor = utilization_pct_ > 80 ? QColor(0xEF, 0x44, 0x44)  // 红色-拥塞
+                           : utilization_pct_ > 50 ? QColor(0xFB, 0xBF, 0x24)  // 黄色-中等
+                           : utilization_pct_ > 0  ? QColor(0x22, 0xC5, 0x5E)  // 绿色-正常
+                           : QColor(0x44, 0x44, 0x44);                          // 灰色-空闲
+        painter->setPen(active ? QColor(0x60, 0xA5, 0xFA) : utilizColor);
+        QRectF line2Rect(labelRect.left(), labelRect.top() + configFm.height() + 4, 
+                         labelRect.width(), utilizFm.height());
+        painter->drawText(line2Rect, Qt::AlignCenter, utilizLine);
     }
 }
 

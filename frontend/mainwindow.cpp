@@ -546,6 +546,30 @@ void MainWindow::updateMetrics() {
                 : 0.0;
             topologyEditor_->updateDeviceMetrics(
                 QString::fromStdString(cfg.cxl_devices[i].id), dm);
+            
+            // 推送链路实时利用率（RC -> CXL设备 或 SW -> CXL设备）
+            // 利用率 = (实际流量 / 物理带宽) * 100%
+            // 实际流量估算：cxl_accesses * 64B cacheline / 1秒，分摊到各设备
+            double actualTrafficGbps = (stats.cxl_accesses > 0)
+                ? (64.0 * stats.cxl_accesses / 1e9) / cfg.cxl_devices.size()
+                : 0.0;
+            double linkUtilPct = std::min(100.0, 
+                (actualTrafficGbps / cfg.cxl_devices[i].bandwidth_gbps) * 100.0);
+            
+            // 链路可能是 RC -> CXL 或 SW -> CXL，尝试两者
+            if (!cfg.root_complex.id.empty()) {
+                topologyEditor_->updateLinkUtilization(
+                    QString::fromStdString(cfg.root_complex.id),
+                    QString::fromStdString(cfg.cxl_devices[i].id),
+                    linkUtilPct);
+            }
+            // 如果有交换机，也更新 SW -> CXL 链路
+            if (!cfg.switches.empty()) {
+                topologyEditor_->updateLinkUtilization(
+                    QString::fromStdString(cfg.switches[0].id),
+                    QString::fromStdString(cfg.cxl_devices[i].id),
+                    linkUtilPct);
+            }
         }
     }
 }
