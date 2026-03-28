@@ -21,6 +21,7 @@ set(FRONTEND_SOURCES
     widgets/experiment_panel_widget.cpp
     widgets/styled_dialogs.cpp
     widgets/workload_config_widget.cpp
+    widgets/sidebar_widget.cpp
 )
 
 set(FRONTEND_HEADERS
@@ -32,6 +33,7 @@ set(FRONTEND_HEADERS
     widgets/experiment_panel_widget.h
     widgets/styled_dialogs.h
     widgets/workload_config_widget.h
+    widgets/sidebar_widget.h
 )
 
 # Create executable

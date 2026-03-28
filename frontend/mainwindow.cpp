@@ -9,6 +9,11 @@
 #include "widgets/metrics_panel.h"
 #include "widgets/experiment_panel_widget.h"
 #include "widgets/workload_config_widget.h"
+#include "widgets/sidebar_widget.h"
+#include <QStackedWidget>
+#include <QHBoxLayout>
+#include <QWidget>
+#include <QScrollArea>
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -137,6 +142,23 @@ void MainWindow::setupStyle() {
         QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox { background-color: #0A0A0A; color: #EDEDED; border: 1px solid #333333; border-radius: 6px; padding: 6px 10px; }
         QLineEdit:focus, QSpinBox:focus, QComboBox:focus { border-color: #666666; background-color: #111111; }
         
+        /* QComboBox 下拉箭头和列表（修复白色背景问题） */
+        QComboBox::drop-down { border: none; background: transparent; width: 20px; }
+        QComboBox::down-arrow { image: none; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid #888888; width: 0; height: 0; margin-right: 6px; }
+        QComboBox::down-arrow:hover { border-top-color: #EDEDED; }
+        QComboBox QAbstractItemView { background-color: #0A0A0A; color: #EDEDED; border: 1px solid #333333; selection-background-color: #1A1A1A; selection-color: #FFFFFF; outline: none; }
+        QComboBox QAbstractItemView::item { padding: 6px 10px; min-height: 24px; }
+        QComboBox QAbstractItemView::item:hover { background-color: #111111; }
+        QComboBox QAbstractItemView::item:selected { background-color: #1A1A1A; }
+        
+        /* QSpinBox/QDoubleSpinBox 上下箭头 */
+        QSpinBox::up-button, QDoubleSpinBox::up-button { background: transparent; border: none; width: 16px; }
+        QSpinBox::down-button, QDoubleSpinBox::down-button { background: transparent; border: none; width: 16px; }
+        QSpinBox::up-arrow, QDoubleSpinBox::up-arrow { border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 5px solid #888888; width: 0; height: 0; }
+        QSpinBox::down-arrow, QDoubleSpinBox::down-arrow { border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid #888888; width: 0; height: 0; }
+        QSpinBox::up-arrow:hover, QDoubleSpinBox::up-arrow:hover { border-bottom-color: #EDEDED; }
+        QSpinBox::down-arrow:hover, QDoubleSpinBox::down-arrow:hover { border-top-color: #EDEDED; }
+        
         /* 状态栏 */
         QStatusBar { background-color: #000000; color: #888888; border-top: 1px solid #222222; }
     )";
@@ -145,18 +167,17 @@ void MainWindow::setupStyle() {
 }
 
 void MainWindow::setupUI() {
-    setWindowTitle("CXLMemSim - CXL \u5185\u5b58\u6a21\u62df\u7cfb\u7edf");
-    resize(1400, 900);
-    setMinimumSize(1100, 700);
+    setWindowTitle("CXLMemSim - CXL 内存模拟系统");
+    resize(1600, 900);
+    setMinimumSize(1200, 700);
 
-    // \u987a\u5e8f\u5fc5\u987b\u6b63\u786e\uff1a\u5148\u521b\u5efawidget\uff0c\u518d\u8fde\u63a5\u4fe1\u53f7\u69fd
-    setupCentralWidget();
-    setupDockWidgets();
     setupMenuBar();
     setupToolBar();
+    setupSidebar();
+    setupPages();
     createConnections();
 
-    statusBar()->showMessage("\u5c31\u7eea - CXLMemSim v1.0");
+    statusBar()->showMessage("就绪 - CXLMemSim v1.0");
 }
 
 void MainWindow::setupMenuBar() {
@@ -195,10 +216,12 @@ void MainWindow::setupMenuBar() {
     simMenu->addAction("\u8fd0\u884c\u9884\u8bbe\u5b9e\u9a8c(&E)...", this, &MainWindow::onRunExperiments);
 
     QMenu* viewMenu = menuBar()->addMenu("\u89c6\u56fe(&V)");
-    if (configDock_)  viewMenu->addAction(configDock_->toggleViewAction());
-    if (metricsDock_) viewMenu->addAction(metricsDock_->toggleViewAction());
-    if (expDock_)     viewMenu->addAction(expDock_->toggleViewAction());
-    if (logDock_)     viewMenu->addAction(logDock_->toggleViewAction());
+    viewMenu->addAction("\u62d3\u6251\u7f16\u8f91", this, [this]() { if(sidebar_) sidebar_->setActivePage(SidebarWidget::TOPOLOGY); });
+    viewMenu->addAction("\u7cfb\u7edf\u914d\u7f6e", this, [this]() { if(sidebar_) sidebar_->setActivePage(SidebarWidget::CONFIG); });
+    viewMenu->addAction("\u8d1f\u8f7d\u914d\u7f6e", this, [this]() { if(sidebar_) sidebar_->setActivePage(SidebarWidget::WORKLOAD); });
+    viewMenu->addAction("\u5b9e\u9a8c\u7ba1\u7406", this, [this]() { if(sidebar_) sidebar_->setActivePage(SidebarWidget::EXPERIMENT); });
+    viewMenu->addAction("\u6027\u80fd\u6307\u6807", this, [this]() { if(sidebar_) sidebar_->setActivePage(SidebarWidget::METRICS); });
+    viewMenu->addAction("\u8fd0\u884c\u65e5\u5fd7", this, [this]() { if(sidebar_) sidebar_->setActivePage(SidebarWidget::LOG); });
 
     QMenu* helpMenu = menuBar()->addMenu("\u5e2e\u52a9(&H)");
     helpMenu->addAction("\u4f7f\u7528\u6587\u6863(&D)", this, &MainWindow::onShowDocs);
@@ -307,85 +330,156 @@ void MainWindow::setupToolBar() {
     connect(resetButton_,  &QPushButton::clicked, this, &MainWindow::onResetSimulation);
     connect(runExpBtn,     &QPushButton::clicked, this, &MainWindow::onRunExperiments);
     connect(injectTopoBtn, &QPushButton::clicked, this, [this]() {
-        if (topologyEditor_ && expPanel_) {
+        if (topologyEditor_ && expPanel_ && sidebar_) {
             auto cfg = topologyEditor_->getCurrentConfig();
             expPanel_->injectTopology(cfg);
-            // 切换到实验面板
-            if (expDock_) { expDock_->raise(); expDock_->show(); }
-            updateStatus("\u62d3\u6251\u5df2\u6ce8\u5165\u5b9e\u9a8c\u7cfb\u7edf");
+            // 切换到实验页面
+            sidebar_->setActivePage(SidebarWidget::EXPERIMENT);
+            updateStatus("拓扑已注入实验系统");
         }
     });
 }
 
-void MainWindow::setupCentralWidget() {
-    centralTabs_ = new QTabWidget(this);
-    centralTabs_->setDocumentMode(true);
-
-    topologyEditor_ = new TopologyEditorWidget(centralTabs_);
-    centralTabs_->addTab(topologyEditor_, " CXL 拓扑图");
-
-    setCentralWidget(centralTabs_);
+void MainWindow::setupSidebar() {
+    sidebar_ = new SidebarWidget(this);
 }
 
-void MainWindow::setupDockWidgets() {
-    // 左侧上：配置树
-    configDock_ = new QDockWidget(" CXL 系统配置", this);
-    configDock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-    configDock_->setMinimumWidth(280);
-    configTree_ = new ConfigTreeWidget(this);
-    configDock_->setWidget(configTree_);
-    addDockWidget(Qt::LeftDockWidgetArea, configDock_);
+void MainWindow::setupPages() {
+    // 创建中央容器
+    auto* centralWidget = new QWidget(this);
+    auto* mainLayout = new QHBoxLayout(centralWidget);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->setSpacing(0);
 
-    // 左侧下：负载配置（科研关键）
-    workloadDock_ = new QDockWidget(" 🚀 负载配置 (Workload)", this);
-    workloadDock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-    workloadDock_->setMinimumWidth(280);
-    workloadWidget_ = new WorkloadConfigWidget(this);
-    workloadDock_->setWidget(workloadWidget_);
-    addDockWidget(Qt::LeftDockWidgetArea, workloadDock_);
+    // 添加侧边栏
+    mainLayout->addWidget(sidebar_);
+
+    // 创建页面堆叠
+    pageStack_ = new QStackedWidget(this);
+    pageStack_->setStyleSheet("QStackedWidget { background: #000000; border: none; }");
+
+    // ═══════════════════════════════════════════════════════════════
+    // 页面0: 拓扑编辑（带右侧性能面板）
+    // ═══════════════════════════════════════════════════════════════
+    auto* topoPage = new QWidget(this);
+    auto* topoLayout = new QHBoxLayout(topoPage);
+    topoLayout->setContentsMargins(0, 0, 0, 0);
+    topoLayout->setSpacing(0);
+
+    topologyEditor_ = new TopologyEditorWidget(topoPage);
+    topoLayout->addWidget(topologyEditor_, 1);
+
+    // 右侧性能面板（紧凑版）
+    auto* metricsContainer = new QWidget(topoPage);
+    metricsContainer->setFixedWidth(320);
+    metricsContainer->setStyleSheet("QWidget { background: #000000; border-left: 1px solid #1A1A1A; }");
+    auto* metricsLayout = new QVBoxLayout(metricsContainer);
+    metricsLayout->setContentsMargins(0, 0, 0, 0);
     
-    splitDockWidget(configDock_, workloadDock_, Qt::Vertical);
+    metricsPanel_ = new MetricsPanel(metricsContainer);
+    metricsLayout->addWidget(metricsPanel_);
+    
+    topoLayout->addWidget(metricsContainer);
+    pageStack_->addWidget(topoPage);
 
-    // 右侧：性能指标
-    metricsDock_ = new QDockWidget(" 性能指标", this);
-    metricsDock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-    metricsDock_->setMinimumWidth(260);
-    metricsPanel_ = new MetricsPanel(this);
-    metricsDock_->setWidget(metricsPanel_);
-    addDockWidget(Qt::RightDockWidgetArea, metricsDock_);
+    // ═══════════════════════════════════════════════════════════════
+    // 页面1: 系统配置
+    // ═══════════════════════════════════════════════════════════════
+    auto* cfgScroll = new QScrollArea(this);
+    cfgScroll->setWidgetResizable(true);
+    cfgScroll->setFrameShape(QFrame::NoFrame);
+    cfgScroll->setStyleSheet("QScrollArea { background: #000000; border: none; }");
+    
+    configTree_ = new ConfigTreeWidget(cfgScroll);
+    cfgScroll->setWidget(configTree_);
+    pageStack_->addWidget(cfgScroll);
 
-    // 底部左：实验管理面板
-    expDock_ = new QDockWidget(" 预设实验管理", this);
-    expDock_->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::LeftDockWidgetArea);
+    // ═══════════════════════════════════════════════════════════════
+    // 页面2: 负载配置
+    // ═══════════════════════════════════════════════════════════════
+    auto* wlScroll = new QScrollArea(this);
+    wlScroll->setWidgetResizable(true);
+    wlScroll->setFrameShape(QFrame::NoFrame);
+    wlScroll->setStyleSheet("QScrollArea { background: #000000; border: none; }");
+    
+    workloadWidget_ = new WorkloadConfigWidget(wlScroll);
+    wlScroll->setWidget(workloadWidget_);
+    pageStack_->addWidget(wlScroll);
+
+    // ═══════════════════════════════════════════════════════════════
+    // 页面3: 实验管理
+    // ═══════════════════════════════════════════════════════════════
     expPanel_ = new ExperimentPanelWidget(this);
-    expDock_->setWidget(expPanel_);
-    addDockWidget(Qt::BottomDockWidgetArea, expDock_);
+    pageStack_->addWidget(expPanel_);
 
-    // 底部右：日志
-    logDock_ = new QDockWidget(" 运行日志", this);
-    logDock_->setAllowedAreas(Qt::BottomDockWidgetArea);
-    logView_ = new QTextEdit(this);
+    // ═══════════════════════════════════════════════════════════════
+    // 页面4: 性能指标（独立全屏视图）
+    // ═══════════════════════════════════════════════════════════════
+    auto* metricsFullPage = new QWidget(this);
+    auto* metricsFullLayout = new QVBoxLayout(metricsFullPage);
+    metricsFullLayout->setContentsMargins(24, 24, 24, 24);
+    
+    auto* metricsTitle = new QLabel("📊 性能监控面板", metricsFullPage);
+    metricsTitle->setStyleSheet("font-size: 18px; font-weight: bold; color: #EDEDED; margin-bottom: 12px;");
+    metricsFullLayout->addWidget(metricsTitle);
+    
+    // 这里可以添加更详细的性能监控组件，暂时显示提示
+    auto* hint = new QLabel("实时性能数据已集成在拓扑编辑页面右侧。\n切换到拓扑页面查看实时指标。", metricsFullPage);
+    hint->setStyleSheet("color: #888888; font-size: 13px; padding: 24px;");
+    hint->setAlignment(Qt::AlignCenter);
+    metricsFullLayout->addWidget(hint, 1);
+    pageStack_->addWidget(metricsFullPage);
+
+    // ═══════════════════════════════════════════════════════════════
+    // 页面5: 运行日志
+    // ═══════════════════════════════════════════════════════════════
+    auto* logPage = new QWidget(this);
+    auto* logLayout = new QVBoxLayout(logPage);
+    logLayout->setContentsMargins(12, 12, 12, 12);
+    
+    auto* logTitle = new QLabel("📝 运行日志", logPage);
+    logTitle->setStyleSheet("font-size: 16px; font-weight: bold; color: #EDEDED; margin-bottom: 8px;");
+    logLayout->addWidget(logTitle);
+    
+    logView_ = new QTextEdit(logPage);
     logView_->setReadOnly(true);
-    logView_->setMinimumHeight(100);
-    logView_->setMaximumHeight(180);
-    logDock_->setWidget(logView_);
-    addDockWidget(Qt::BottomDockWidgetArea, logDock_);
+    logLayout->addWidget(logView_);
+    pageStack_->addWidget(logPage);
 
-    tabifyDockWidget(expDock_, logDock_);
-    expDock_->raise();
+    // 添加页面堆叠到布局
+    mainLayout->addWidget(pageStack_, 1);
 
-    resizeDocks({configDock_}, {260}, Qt::Horizontal);
-    resizeDocks({metricsDock_}, {280}, Qt::Horizontal);
+    setCentralWidget(centralWidget);
+    
+    // 默认显示拓扑编辑页面
+    pageStack_->setCurrentIndex(0);
+}
+
+void MainWindow::onPageChanged(int pageIndex) {
+    if (pageStack_) {
+        pageStack_->setCurrentIndex(pageIndex);
+        
+        // 更新状态栏提示
+        QStringList pageNames = {"拓扑编辑", "系统配置", "负载配置", "实验管理", "性能指标", "运行日志"};
+        if (pageIndex >= 0 && pageIndex < pageNames.size()) {
+            updateStatus(QString("当前页面: %1").arg(pageNames[pageIndex]));
+        }
+    }
 }
 
 void MainWindow::createConnections() {
-    // \u914d\u7f6e\u6811 -> \u62d3\u6251\u56fe
+    // ── 侧边栏页面切换 ──
+    if (sidebar_) {
+        connect(sidebar_, &SidebarWidget::pageChanged, this, &MainWindow::onPageChanged);
+    }
+
+    // ── 配置树 -> 拓扑图 ──
     if (configTree_ && topologyEditor_) {
         connect(configTree_, &ConfigTreeWidget::configChanged,
                 topologyEditor_, &TopologyEditorWidget::updateTopology);
     }
 
-    // \u62d3\u6251\u56fe\u4fee\u6539 -> \u66f4\u65b0\u914d\u7f6e\u6811
+    // ── 拓扑图修改 -> 更新配置树 ──
     if (topologyEditor_ && configTree_) {
         connect(topologyEditor_, &TopologyEditorWidget::topologyModified,
                 this, [this]() {
@@ -396,28 +490,28 @@ void MainWindow::createConnections() {
                 });
     }
 
-    // \u5b9e\u9a8c\u9762\u677f\u65e5\u5fd7\u8f6c\u53d1
+    // ── 实验面板日志转发 ──
     if (expPanel_ && logView_) {
         connect(expPanel_, &ExperimentPanelWidget::logMessage,
                 logView_, &QTextEdit::append);
     }
 
-    // \u5b9e\u9a8c\u5b8c\u6210\u65f6\u663e\u793a\u5b9e\u9a8c\u9762\u677f
-    if (expPanel_ && expDock_) {
+    // ── 实验完成时切换到实验页面 ──
+    if (expPanel_ && sidebar_) {
         connect(expPanel_, &ExperimentPanelWidget::resultsReady,
                 this, [this]() {
-                    expDock_->show();
-                    expDock_->raise();
+                    sidebar_->setActivePage(SidebarWidget::EXPERIMENT);
                     updateStatus("\u5b9e\u9a8c\u5b8c\u6210\uff01\u5df2\u751f\u6210\u7ed3\u679c\u56fe\u8868");
                 });
     }
 
-    // \u5b9a\u65f6\u66f4\u65b0\u6307\u6807
+    // ── 定时更新指标 ──
     updateTimer_ = new QTimer(this);
     connect(updateTimer_, &QTimer::timeout, this, &MainWindow::updateMetrics);
     updateTimer_->start(1000);
 }
 
+// ...
 // \u6587\u4ef6\u83dc\u5355\u69fd\u51fd\u6570
 void MainWindow::onNewConfig() {
     config_ = cxlsim::ConfigParser::create_default_config();
@@ -570,12 +664,11 @@ void MainWindow::onResetSimulation() {
 }
 
 void MainWindow::onRunExperiments() {
-    if (expDock_) {
-        expDock_->show();
-        expDock_->raise();
+    if (sidebar_) {
+        sidebar_->setActivePage(SidebarWidget::EXPERIMENT);
     }
-    updateStatus("\u8bf7\u5728\u300a\u9884\u8bbe\u5b9e\u9a8c\u7ba1\u7406\u300b\u9762\u677f\u9009\u62e9\u5b9e\u9a8c");
-    if (logView_) logView_->append("[INFO] \u8bf7\u5728\u5e95\u90e8\u300a\u9884\u8bbe\u5b9e\u9a8c\u7ba1\u7406\u300b\u9762\u677f\u8fd0\u884c\u5b9e\u9a8c");
+    updateStatus("已切换到实验管理页面");
+    if (logView_) logView_->append("[INFO] 请在实验管理页面选择并运行实验");
 }
 
 void MainWindow::onAbout() {

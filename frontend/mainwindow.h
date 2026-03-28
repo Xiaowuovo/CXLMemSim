@@ -22,6 +22,8 @@ class ConfigTreeWidget;
 class MetricsPanel;
 class ExperimentPanelWidget;
 class WorkloadConfigWidget;
+class SidebarWidget;
+class QStackedWidget;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -59,29 +61,24 @@ private:
     void setupStyle();
     void setupMenuBar();
     void setupToolBar();
-    void setupDockWidgets();
-    void setupCentralWidget();
+    void setupSidebar();
+    void setupPages();
     void createConnections();
     void loadConfig(const QString& filename);
     void saveConfig(const QString& filename);
+    void onPageChanged(int pageIndex);
 
-    // 中央区域 - 标签页
-    QTabWidget* centralTabs_;
+    // 侧边栏和页面系统（VSCode风格）
+    SidebarWidget* sidebar_;
+    QStackedWidget* pageStack_;
+    
+    // 页面组件
     TopologyEditorWidget* topologyEditor_;
-
-    // 停靠面板
-    QDockWidget* configDock_;
-    QDockWidget* metricsDock_;
-    QDockWidget* logDock_;
-    QDockWidget* expDock_;
-    QDockWidget* workloadDock_;     ///< 负载配置面板
-
-    // 子控件
     ConfigTreeWidget* configTree_;
+    WorkloadConfigWidget* workloadWidget_;
+    ExperimentPanelWidget* expPanel_;
     MetricsPanel* metricsPanel_;
     QTextEdit* logView_;
-    ExperimentPanelWidget* expPanel_;
-    WorkloadConfigWidget* workloadWidget_;  ///< 负载配置组件
 
     // 工具栏控件
     QPushButton* startButton_;
