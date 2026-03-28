@@ -413,11 +413,7 @@ void MetricsPanel::updateStats(const cxlsim::EpochStats& stats) {
 
     latencyChart_->addDataPoint(stats.avg_latency_ns);
     missRateChart_->addDataPoint(missRatePct);
-
-    double bw = 0.0;
-    if (stats.total_accesses > 0)
-        bw = (stats.total_accesses * 64.0) / 0.01 / 1e9;
-    bandwidthChart_->addDataPoint(bw);
+    bandwidthChart_->addDataPoint(bw);  // 复用前面计算的带宽值
 }
 
 void MetricsPanel::reset() {
