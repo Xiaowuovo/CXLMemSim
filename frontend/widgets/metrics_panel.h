@@ -50,10 +50,10 @@ private:
     QProgressBar* linkUtilBar_;   ///< 链路利用率进度条
     QProgressBar* missRate_;
 
-    // Charts
-    QTabWidget* chartTabs_;
+    // Charts (顺序必须与构造函数初始化列表一致)
     RealTimeChartWidget* latencyChart_;
     RealTimeChartWidget* bandwidthChart_;
+    QTabWidget* chartTabs_;
     RealTimeChartWidget* missRateChart_;
 
     // Group boxes

@@ -41,8 +41,8 @@ MetricsPanel::MetricsPanel(QWidget *parent)
     , missRate_(nullptr)
     , latencyChart_(nullptr)
     , bandwidthChart_(nullptr)
-    , missRateChart_(nullptr)
     , chartTabs_(nullptr)
+    , missRateChart_(nullptr)
 {
     setupUI();
 }

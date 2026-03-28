@@ -20,6 +20,7 @@ set(FRONTEND_SOURCES
     widgets/realtime_chart_widget.cpp
     widgets/experiment_panel_widget.cpp
     widgets/styled_dialogs.cpp
+    widgets/workload_config_widget.cpp
 )
 
 set(FRONTEND_HEADERS
@@ -30,6 +31,7 @@ set(FRONTEND_HEADERS
     widgets/realtime_chart_widget.h
     widgets/experiment_panel_widget.h
     widgets/styled_dialogs.h
+    widgets/workload_config_widget.h
 )
 
 # Create executable
