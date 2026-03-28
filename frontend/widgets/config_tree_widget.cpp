@@ -265,17 +265,22 @@ void ConfigTreeWidget::addSwitchesItem() {
 
 void ConfigTreeWidget::addDevicesItem() {
     auto* devRoot = makeCategory(tree_,
-        QString("\u25b6 CXL \u5185\u5b58\u8bbe\u5907 (%1\u4e2a)").arg(config_.cxl_devices.size()));
+        QString("▶ CXL 内存设备 (%1个)").arg(config_.cxl_devices.size()));
     devRoot->setExpanded(true);
 
+    // 提示：设备属性应该在拓扑编辑器中配置
+    auto* hintItem = new QTreeWidgetItem(devRoot);
+    hintItem->setText(0, "  ℹ 设备属性在拓扑图中配置");
+    hintItem->setForeground(0, QColor(0x88, 0x88, 0x88));
+    hintItem->setFlags(Qt::ItemIsEnabled);
+    
     for (const auto& dev : config_.cxl_devices) {
         auto* devItem = new QTreeWidgetItem(devRoot);
-        devItem->setText(0, QString("  \u25cf %1").arg(QString::fromStdString(dev.id)));
+        devItem->setText(0, QString("  ● %1").arg(QString::fromStdString(dev.id)));
+        devItem->setText(1, QString::fromStdString(dev.type));
         devItem->setForeground(0, QColor(0x4F, 0xC3, 0xF7));
-        makeRow(devItem, "    \u7c7b\u578b",         QString::fromStdString(dev.type));
-        makeRow(devItem, "    \u5bb9\u91cf (GB)",    QString::number(dev.capacity_gb),    true);
-        makeRow(devItem, "    \u5e26\u5bbd (GB/s)",  QString::number(dev.bandwidth_gbps), true);
-        makeRow(devItem, "    \u57fa\u51c6\u5ef6\u8fdf (ns)", QString::number(dev.base_latency_ns), true);
+        devItem->setForeground(1, QColor(0x88, 0x88, 0x88));
+        devItem->setToolTip(0, "点击拓扑图中的节点以配置容量、带宽、延迟等属性");
     }
 }
 
@@ -295,10 +300,13 @@ void ConfigTreeWidget::addConnectionsItem() {
 }
 
 void ConfigTreeWidget::addSimulationItem() {
-    auto* simRoot = makeCategory(tree_, "▶ 模拟参数");
+    auto* simRoot = makeCategory(tree_, "▶ 模拟引擎参数");
+    simRoot->setToolTip(0, "全局引擎级别的参数配置");
+    
     makeRow(simRoot, "  Epoch时长 (ms)", QString::number(config_.simulation.epoch_ms), true);
-    makeRow(simRoot, "  MLP优化", config_.simulation.enable_mlp_optimization ? "开启" : "关闭");
-    makeRow(simRoot, "  拥塞模型", config_.simulation.enable_congestion_model ? "开启" : "关闭");
+    makeRow(simRoot, "  MLP优化", config_.simulation.enable_mlp_optimization ? "✓ 开启" : "✗ 关闭");
+    makeRow(simRoot, "  拥塞模型", config_.simulation.enable_congestion_model ? "✓ 开启" : "✗ 关闭");
+    makeRow(simRoot, "  热点检测", "关闭"); // 未来扩展
 }
 
 void ConfigTreeWidget::onItemDoubleClicked(QTreeWidgetItem* item, int column) {

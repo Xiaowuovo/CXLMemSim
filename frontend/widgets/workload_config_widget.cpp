@@ -194,13 +194,36 @@ void WorkloadConfigWidget::setupUI() {
 void WorkloadConfigWidget::updateUIState() {
     bool isSynthetic = syntheticModeBtn_->isChecked();
     
+    // 强化互斥逻辑：禁用的组件添加半透明样式
     traceGroup_->setEnabled(!isSynthetic);
     syntheticGroup_->setEnabled(isSynthetic);
     
-    // Stride控件仅在Stride模式启用
     if (isSynthetic) {
+        // Synthetic模式：Trace组件置灰
+        traceGroup_->setStyleSheet(
+            "QGroupBox { color: #444444; font-size: 11px; font-weight: bold; "
+            "border: 1px solid #222222; border-radius: 6px; padding: 12px; "
+            "margin-top: 8px; background: #050505; opacity: 0.5; }"
+            "QGroupBox * { color: #444444; }");
+        syntheticGroup_->setStyleSheet(
+            "QGroupBox { color: #888888; font-size: 11px; font-weight: bold; "
+            "border: 1px solid #4FC3F7; border-radius: 6px; padding: 12px; "
+            "margin-top: 8px; background: #0A0A0A; }");
+        
+        // Stride控件仅在Stride模式启用
         int pattern = patternCombo_->currentData().toInt();
         strideSpin_->setEnabled(pattern == static_cast<int>(cxlsim::AccessPattern::STRIDE));
+    } else {
+        // Trace模式：Synthetic组件置灰
+        traceGroup_->setStyleSheet(
+            "QGroupBox { color: #888888; font-size: 11px; font-weight: bold; "
+            "border: 1px solid #4FC3F7; border-radius: 6px; padding: 12px; "
+            "margin-top: 8px; background: #0A0A0A; }");
+        syntheticGroup_->setStyleSheet(
+            "QGroupBox { color: #444444; font-size: 11px; font-weight: bold; "
+            "border: 1px solid #222222; border-radius: 6px; padding: 12px; "
+            "margin-top: 8px; background: #050505; opacity: 0.5; }"
+            "QGroupBox * { color: #444444; }");
     }
 }
 

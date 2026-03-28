@@ -14,10 +14,12 @@
 static QLabel* makeValueLabel(QWidget* parent, const QString& color = "#EDEDED") {
     auto* lbl = new QLabel("0", parent);
     lbl->setStyleSheet(QString(
-        "font-size:16px; font-weight:600; color:%1; "
+        "font-size:13px; font-weight:600; color:%1; "
         "background:transparent; border:none; "
-        "padding:2px 4px; min-width:80px; font-family: 'JetBrains Mono', 'Inter', monospace;").arg(color));
+        "padding:2px 4px; min-width:60px; max-width:100px; "
+        "font-family: 'JetBrains Mono', 'Consolas', monospace;").arg(color));
     lbl->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    lbl->setWordWrap(false);
     return lbl;
 }
 
@@ -89,8 +91,11 @@ void MetricsPanel::setupUI() {
     bwBox->addWidget(bwLabel);
     
     bandwidthDisplay_ = new QLabel("0.0", this);
-    bandwidthDisplay_->setStyleSheet("color: #4ADE80; font-size: 28px; font-weight: bold; text-align: center;");
+    bandwidthDisplay_->setStyleSheet(
+        "color: #4ADE80; font-size: 22px; font-weight: bold; "
+        "font-family: 'JetBrains Mono', 'Consolas', monospace;");
     bandwidthDisplay_->setAlignment(Qt::AlignCenter);
+    bandwidthDisplay_->setMinimumHeight(32);
     bwBox->addWidget(bandwidthDisplay_);
     dashLayout->addLayout(bwBox, 1);
     
@@ -108,8 +113,11 @@ void MetricsPanel::setupUI() {
     latBox->addWidget(latLabel);
     
     latencyDisplay_ = new QLabel("0.0", this);
-    latencyDisplay_->setStyleSheet("color: #FBBF24; font-size: 28px; font-weight: bold; text-align: center;");
+    latencyDisplay_->setStyleSheet(
+        "color: #FBBF24; font-size: 22px; font-weight: bold; "
+        "font-family: 'JetBrains Mono', 'Consolas', monospace;");
     latencyDisplay_->setAlignment(Qt::AlignCenter);
+    latencyDisplay_->setMinimumHeight(32);
     latBox->addWidget(latencyDisplay_);
     dashLayout->addLayout(latBox, 1);
     

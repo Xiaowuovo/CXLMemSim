@@ -758,6 +758,14 @@ void MainWindow::onPageChanged(int pageIndex) {
         if (pageIndex >= 0 && pageIndex < pageNames.size()) {
             updateStatus(QString("当前页面: %1").arg(pageNames[pageIndex]));
         }
+        
+        // 上下文感知工具栏：根据当前页面动态显示/隐藏按钮
+        bool isTopologyPage = (pageIndex == 0);
+        
+        // 模拟控制按钮：仅在拓扑编辑页显示
+        if (startButton_) startButton_->setVisible(isTopologyPage);
+        if (stopButton_) stopButton_->setVisible(isTopologyPage);
+        if (resetButton_) resetButton_->setVisible(isTopologyPage);
     }
 }
 
