@@ -31,6 +31,11 @@ MetricsPanel::MetricsPanel(QWidget *parent)
     , cxlAccesses_(nullptr)
     , avgLatency_(nullptr)
     , totalDelay_(nullptr)
+    , p95Latency_(nullptr)
+    , p99Latency_(nullptr)
+    , queuingDelay_(nullptr)
+    , tieringRatio_(nullptr)
+    , linkUtilBar_(nullptr)
     , missRate_(nullptr)
     , chartTabs_(nullptr)
     , latencyChart_(nullptr)
@@ -47,6 +52,27 @@ void MetricsPanel::setupUI() {
     mainLayout->setContentsMargins(12, 12, 12, 12);
     mainLayout->setSpacing(16);
 
+    // ── 模式指示器（科研可信度关键）──
+    auto* modeFrame = new QFrame(this);
+    modeFrame->setStyleSheet(
+        "QFrame { background: #1A1A2E; border: 1px solid #4A148C; border-radius: 6px; padding: 8px; }");
+    auto* modeLayout = new QHBoxLayout(modeFrame);
+    modeLayout->setContentsMargins(8, 6, 8, 6);
+    
+    auto* modeIcon = new QLabel("⚡", this);
+    modeIcon->setStyleSheet("color: #CE93D8; font-size: 16px; font-weight: bold;");
+    modeLayout->addWidget(modeIcon);
+    
+    auto* modeLabel = new QLabel("实时仿真模式 (Live Simulation)", this);
+    modeLabel->setStyleSheet("color: #CE93D8; font-size: 11px; font-weight: bold;");
+    modeLayout->addWidget(modeLabel, 1);
+    
+    auto* modeHint = new QLabel("需点击 '▶ 开始模拟' 运行", this);
+    modeHint->setStyleSheet("color: #666666; font-size: 9px;");
+    modeLayout->addWidget(modeHint);
+    
+    mainLayout->addWidget(modeFrame);
+    
     mainLayout->addWidget(createEpochGroup());
     mainLayout->addWidget(createAccessGroup());
     mainLayout->addWidget(createLatencyGroup());
@@ -117,6 +143,40 @@ QGroupBox* MetricsPanel::createAccessGroup() {
     
     frameLayout->addLayout(layout);
 
+    // ── CXL科研关键：内存层次化比例 ──
+    auto* sep1 = new QFrame(frame);
+    sep1->setFrameShape(QFrame::HLine);
+    sep1->setStyleSheet("border: none; background: #222222; max-height: 1px;");
+    frameLayout->addWidget(sep1);
+
+    auto* tieringLayout = new QHBoxLayout();
+    auto* tieringLbl = new QLabel("Local DRAM vs CXL Ratio", this);
+    tieringLbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
+    tieringLayout->addWidget(tieringLbl);
+    
+    tieringRatio_ = new QLabel("0:0", this);
+    tieringRatio_->setStyleSheet("color: #10B981; font-size: 12px; font-weight: 600; background: transparent;");
+    tieringLayout->addWidget(tieringRatio_, 0, Qt::AlignRight);
+    frameLayout->addLayout(tieringLayout);
+
+    // ── 链路利用率进度条 ──
+    auto* linkLayout = new QHBoxLayout();
+    auto* linkLbl = new QLabel("Link Utilization", this);
+    linkLbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
+    linkLayout->addWidget(linkLbl);
+    
+    linkUtilBar_ = new QProgressBar(this);
+    linkUtilBar_->setRange(0, 100);
+    linkUtilBar_->setValue(0);
+    linkUtilBar_->setTextVisible(false);
+    linkUtilBar_->setFixedHeight(6);
+    linkUtilBar_->setStyleSheet(
+        "QProgressBar { background: #111111; border: none; border-radius: 3px; }"
+        "QProgressBar::chunk { background: #10B981; border-radius: 3px; }"
+    );
+    linkLayout->addWidget(linkUtilBar_, 1, Qt::AlignVCenter);
+    frameLayout->addLayout(linkLayout);
+
     // Separator
     auto* line = new QFrame(frame);
     line->setFrameShape(QFrame::HLine);
@@ -162,10 +222,26 @@ QGroupBox* MetricsPanel::createLatencyGroup() {
     layout->setSpacing(8);
     layout->setLabelAlignment(Qt::AlignLeft);
 
-    avgLatency_ = makeValueLabel(this, "#FBBF24"); // Vercel Yellow
+    avgLatency_ = makeValueLabel(this, "#FBBF24");
     auto* albl = new QLabel("Avg CXL Latency", this);
     albl->setStyleSheet("color: #888888; font-size: 12px; background: transparent; border: none;");
     layout->addRow(albl, avgLatency_);
+
+    // ── CXL科研关键指标：尾延迟 ──
+    p95Latency_ = makeValueLabel(this, "#F97316"); // Orange
+    auto* p95lbl = new QLabel("P95 Latency (抖动)", this);
+    p95lbl->setStyleSheet("color: #888888; font-size: 12px; background: transparent; border: none;");
+    layout->addRow(p95lbl, p95Latency_);
+
+    p99Latency_ = makeValueLabel(this, "#EF4444"); // Red
+    auto* p99lbl = new QLabel("P99 Latency (最坏)", this);
+    p99lbl->setStyleSheet("color: #888888; font-size: 12px; background: transparent; border: none;");
+    layout->addRow(p99lbl, p99Latency_);
+
+    queuingDelay_ = makeValueLabel(this, "#8B5CF6"); // Purple
+    auto* qlbl = new QLabel("Queuing Delay (拥塞)", this);
+    qlbl->setStyleSheet("color: #888888; font-size: 12px; background: transparent; border: none;");
+    layout->addRow(qlbl, queuingDelay_);
 
     totalDelay_ = makeValueLabel(this, "#A1A1AA");
     auto* tdlbl = new QLabel("Total Injected Delay", this);
@@ -224,6 +300,26 @@ void MetricsPanel::updateStats(const cxlsim::EpochStats& stats) {
     l3Misses_->setText(QString::number(stats.l3_misses));
     cxlAccesses_->setText(QString::number(stats.cxl_accesses));
 
+    // ── 内存层次化比例（科研关键）──
+    uint64_t localAccesses = stats.local_dram_accesses;
+    uint64_t cxlAccesses = stats.cxl_accesses;
+    if (localAccesses + cxlAccesses > 0) {
+        tieringRatio_->setText(QString("%1:%2")
+            .arg(localAccesses).arg(cxlAccesses));
+    } else {
+        tieringRatio_->setText("0:0");
+    }
+
+    // ── 链路利用率 ──
+    int linkUtilPct = static_cast<int>(stats.link_utilization_pct);
+    linkUtilBar_->setValue(linkUtilPct);
+    QString linkColor = linkUtilPct > 80 ? "#EF4444"   // 红色-拥塞
+                      : linkUtilPct > 50 ? "#FBBF24"   // 黄色-中等
+                      : "#10B981";                     // 绿色-正常
+    linkUtilBar_->setStyleSheet(QString(
+        "QProgressBar { background: #111111; border: none; border-radius: 3px; }"
+        "QProgressBar::chunk { background: %1; border-radius: 3px; }").arg(linkColor));
+
     int missRatePct = 0;
     if (stats.total_accesses > 0)
         missRatePct = (int)((double)stats.l3_misses * 100.0 / stats.total_accesses);
@@ -238,7 +334,11 @@ void MetricsPanel::updateStats(const cxlsim::EpochStats& stats) {
         "QProgressBar { background: #111111; border: none; border-radius: 3px; }"
         "QProgressBar::chunk { background: %1; border-radius: 3px; }").arg(chunkColor));
 
+    // ── 延迟指标（含尾延迟）──
     avgLatency_->setText(QString("%1 ns").arg(stats.avg_latency_ns, 0, 'f', 1));
+    p95Latency_->setText(QString("%1 ns").arg(stats.p95_latency_ns, 0, 'f', 1));
+    p99Latency_->setText(QString("%1 ns").arg(stats.p99_latency_ns, 0, 'f', 1));
+    queuingDelay_->setText(QString("%1 ns").arg(stats.queuing_delay_ns, 0, 'f', 1));
     totalDelay_->setText(QString("%1 ms").arg(stats.total_injected_delay_ns / 1e6, 0, 'f', 3));
 
     latencyChart_->addDataPoint(stats.avg_latency_ns);

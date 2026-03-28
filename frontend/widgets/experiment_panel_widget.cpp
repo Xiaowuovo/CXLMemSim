@@ -23,6 +23,7 @@
 #include <QPaintEvent>
 #include <cmath>
 #include <algorithm>
+#include <QMessageBox>
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ResultChartWidget
@@ -842,10 +843,45 @@ void ExperimentPanelWidget::appendLog(const QString& msg) {
 }
 
 void ExperimentPanelWidget::injectTopology(const cxlsim::CXLSimConfig& config) {
-    topologyOverride_    = config;
-    hasTopologyOverride_ = true;
-    appendLog(QString("[TOPO]  自定义拓扑已注入: %1 个CXL设备, %2 个交换机")
-              .arg(config.cxl_devices.size()).arg(config.switches.size()));
+    // ── 参数优先级透明化（科研可信度关键）──
+    QString diffMsg = QString(
+        "⚠️  <b>参数覆盖确认</b><br/><br/>"
+        "您正在将自定义拓扑注入实验系统。<br/>"
+        "以下参数将<b>覆盖</b>预设实验的默认值：<br/><br/>"
+        "<table style='margin-left:20px;'>"
+        "<tr><td style='color:#888;'>CXL 设备数：</td><td><b>%1</b></td></tr>"
+        "<tr><td style='color:#888;'>交换机数：</td><td><b>%2</b></td></tr>")
+        .arg(config.cxl_devices.size()).arg(config.switches.size());
+    
+    if (!config.cxl_devices.empty()) {
+        diffMsg += QString(
+            "<tr><td style='color:#888;'>CXL 延迟：</td><td><b>%1 ns</b> (预设可能不同)</td></tr>"
+            "<tr><td style='color:#888;'>CXL 带宽：</td><td><b>%2 GB/s</b> (预设可能不同)</td></tr>")
+            .arg(config.cxl_devices[0].base_latency_ns, 0, 'f', 0)
+            .arg(config.cxl_devices[0].bandwidth_gbps, 0, 'f', 0);
+    }
+    
+    diffMsg += "</table><br/>"
+        "<font color='#FBBF24'>⚡ 后续所有实验将以拓扑参数为准，预设参数仅作参考。</font>";
+    
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("参数优先级确认");
+    msgBox.setTextFormat(Qt::RichText);
+    msgBox.setText(diffMsg);
+    msgBox.setIcon(QMessageBox::Warning);
+    msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+    msgBox.setDefaultButton(QMessageBox::Ok);
+    
+    if (msgBox.exec() == QMessageBox::Ok) {
+        topologyOverride_    = config;
+        hasTopologyOverride_ = true;
+        appendLog(QString("[TOPO] ✓ 自定义拓扑已注入: %1×CXL, %2×SW, 延迟=%3ns, 带宽=%4GB/s")
+                  .arg(config.cxl_devices.size()).arg(config.switches.size())
+                  .arg(config.cxl_devices.empty() ? 0 : config.cxl_devices[0].base_latency_ns, 0, 'f', 0)
+                  .arg(config.cxl_devices.empty() ? 0 : config.cxl_devices[0].bandwidth_gbps, 0, 'f', 0));
+    } else {
+        appendLog("[TOPO] ✗ 拓扑注入已取消");
+    }
 }
 
 void ExperimentPanelWidget::clearTopologyOverride() {

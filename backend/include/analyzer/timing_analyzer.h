@@ -43,13 +43,20 @@ struct EpochStats {
     uint64_t total_accesses;
     uint64_t l3_misses;
     uint64_t cxl_accesses;
+    uint64_t local_dram_accesses;    ///< 本地DRAM访问次数（科研关键）
     double total_injected_delay_ns;
     double avg_latency_ns;
+    double p95_latency_ns;           ///< P95尾延迟（抖动评估）
+    double p99_latency_ns;           ///< P99尾延迟（最坏情况）
+    double queuing_delay_ns;         ///< 拥塞排队延迟
+    double link_utilization_pct;     ///< 链路平均利用率 0-100%
     uint64_t epoch_number;
 
     EpochStats()
-        : total_accesses(0), l3_misses(0), cxl_accesses(0),
-          total_injected_delay_ns(0), avg_latency_ns(0), epoch_number(0) {}
+        : total_accesses(0), l3_misses(0), cxl_accesses(0), local_dram_accesses(0),
+          total_injected_delay_ns(0), avg_latency_ns(0), 
+          p95_latency_ns(0), p99_latency_ns(0), 
+          queuing_delay_ns(0), link_utilization_pct(0), epoch_number(0) {}
 };
 
 /**

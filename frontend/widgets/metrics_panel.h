@@ -39,6 +39,11 @@ private:
     QLabel* cxlAccesses_;
     QLabel* avgLatency_;
     QLabel* totalDelay_;
+    QLabel* p95Latency_;          ///< P95尾延迟（抖动关键）
+    QLabel* p99Latency_;          ///< P99尾延迟（最坏情况）
+    QLabel* queuingDelay_;        ///< 排队延迟
+    QLabel* tieringRatio_;        ///< 本地DRAM vs CXL比例
+    QProgressBar* linkUtilBar_;   ///< 链路利用率进度条
     QProgressBar* missRate_;
 
     // Charts

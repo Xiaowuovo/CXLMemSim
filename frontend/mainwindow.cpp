@@ -228,16 +228,31 @@ void MainWindow::setupToolBar() {
     runExpBtn->setMinimumWidth(100);
     runExpBtn->setStyleSheet("QPushButton{background-color:#4A148C;border-color:#CE93D8;color:#F3E5F5;}"
                              "QPushButton:hover{background-color:#6A1B9A;}");
+
     toolbar->addWidget(runExpBtn);
 
     QPushButton* injectTopoBtn = new QPushButton(" \u27a1  \u5e94\u7528\u62d3\u6251\u5230\u5b9e\u9a8c");
     injectTopoBtn->setMinimumWidth(130);
-    injectTopoBtn->setToolTip("\u5c06\u5f53\u524d\u62d3\u6251\u56fe\u7684\u53c2\u6570\u6ce8\u5165\u5230\u5b9e\u9a8c\u7cfb\u7edf\u4e2d");
+    injectTopoBtn->setToolTip("将当前拓扑图的参数注入到实验系统中");
     injectTopoBtn->setStyleSheet(
         "QPushButton{background-color:#0D3B5C;border:1px solid #29B6F6;color:#81D4FA;border-radius:4px;}"
         "QPushButton:hover{background-color:#1565C0;border-color:#4FC3F7;}"
         "QPushButton:pressed{background-color:#0288D1;}");
+
     toolbar->addWidget(injectTopoBtn);
+
+    toolbar->addSeparator();
+
+    QPushButton* exportDataBtn = new QPushButton(" \u2318  \u5bfc\u51fa\u5b9e\u9a8c\u6570\u636e");
+    exportDataBtn->setMinimumWidth(130);
+    exportDataBtn->setToolTip("导出实验结果为 CSV/JSON 用于论文绘图 (Python/MATLAB)");
+    exportDataBtn->setStyleSheet(
+        "QPushButton{background-color:#065F46;border:1px solid #10B981;color:#6EE7B7;border-radius:4px;font-weight:bold;}"
+        "QPushButton:hover{background-color:#047857;border-color:#34D399;}"
+        "QPushButton:pressed{background-color:#059669;}");
+
+    toolbar->addWidget(exportDataBtn);
+    connect(exportDataBtn, &QPushButton::clicked, this, &MainWindow::onExportData);
 
     toolbar->addSeparator();
 
