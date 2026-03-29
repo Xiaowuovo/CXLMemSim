@@ -177,49 +177,50 @@ void WorkloadConfigWidget::setupUI() {
     btnLayout->setSpacing(12);
     
     auto* applyBtn = new QPushButton("✓ 应用负载配置", this);
-    applyBtn->setMinimumHeight(36);
+    applyBtn->setMinimumHeight(40);
     applyBtn->setCursor(Qt::PointingHandCursor);
     applyBtn->setStyleSheet(
         "QPushButton { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #0A3D2C, stop:1 #052E16); "
+        "    background: #0A0A0A; "
         "    color: #6EE7B7; "
         "    border: 1px solid #166534; "
         "    border-radius: 6px; "
-        "    padding: 8px 20px; "
+        "    padding: 10px 24px; "
         "    font-weight: 600; "
         "    font-size: 13px;"
         "}"
         "QPushButton:hover { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #14532D, stop:1 #0A3D2C); "
+        "    background: #0A3D2C; "
         "    color: #86EFAC; "
         "    border-color: #22C55E; "
         "}"
         "QPushButton:pressed { "
-        "    background: #052E16; "
+        "    background: #14532D; "
+        "    border-color: #22C55E; "
         "}");
     connect(applyBtn, &QPushButton::clicked, this, &WorkloadConfigWidget::applyWorkloadRequested);
     btnLayout->addWidget(applyBtn);
     
     auto* cancelBtn = new QPushButton("✕ 取消负载", this);
-    cancelBtn->setMinimumHeight(36);
+    cancelBtn->setMinimumHeight(40);
     cancelBtn->setCursor(Qt::PointingHandCursor);
     cancelBtn->setStyleSheet(
         "QPushButton { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #3D0A0A, stop:1 #2E0505); "
+        "    background: #0A0A0A; "
         "    color: #FCA5A5; "
         "    border: 1px solid #7F1D1D; "
         "    border-radius: 6px; "
-        "    padding: 8px 20px; "
+        "    padding: 10px 24px; "
         "    font-weight: 600; "
         "    font-size: 13px;"
         "}"
         "QPushButton:hover { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #532D14, stop:1 #3D0A0A); "
+        "    background: #3D0A0A; "
         "    color: #FEE2E2; "
+        "    border-color: #DC2626; "
+        "}"
+        "QPushButton:pressed { "
+        "    background: #532D14; "
         "    border-color: #DC2626; "
         "}");
     connect(cancelBtn, &QPushButton::clicked, this, &WorkloadConfigWidget::cancelWorkloadRequested);

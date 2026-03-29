@@ -72,10 +72,11 @@ void MetricsPanel::setupUI() {
     
     bandwidthDisplay_ = new QLabel("0.0", this);
     bandwidthDisplay_->setStyleSheet(
-        "color: #4ADE80; font-size: 22px; font-weight: bold; "
-        "font-family: 'JetBrains Mono', 'Consolas', monospace;");
+        "color: #4ADE80; font-size: 24px; font-weight: 600; "
+        "font-family: 'Roboto Mono', 'Consolas', 'Monaco', monospace; "
+        "line-height: 1.4; padding: 8px 0;");
     bandwidthDisplay_->setAlignment(Qt::AlignCenter);
-    bandwidthDisplay_->setMinimumHeight(32);
+    bandwidthDisplay_->setMinimumHeight(48);
     bwBox->addWidget(bandwidthDisplay_);
     dashLayout->addLayout(bwBox, 1);
     
@@ -94,10 +95,11 @@ void MetricsPanel::setupUI() {
     
     latencyDisplay_ = new QLabel("0.0", this);
     latencyDisplay_->setStyleSheet(
-        "color: #FBBF24; font-size: 22px; font-weight: bold; "
-        "font-family: 'JetBrains Mono', 'Consolas', monospace;");
+        "color: #FBBF24; font-size: 24px; font-weight: 600; "
+        "font-family: 'Roboto Mono', 'Consolas', 'Monaco', monospace; "
+        "line-height: 1.4; padding: 8px 0;");
     latencyDisplay_->setAlignment(Qt::AlignCenter);
-    latencyDisplay_->setMinimumHeight(32);
+    latencyDisplay_->setMinimumHeight(48);
     latBox->addWidget(latencyDisplay_);
     dashLayout->addLayout(latBox, 1);
     
@@ -164,6 +166,9 @@ QGroupBox* MetricsPanel::createAccessGroup() {
         "QGroupBox { color: #888888; font-size: 11px; font-weight: bold; letter-spacing: 1px; border: none; padding-top: 16px; }"
         "QGroupBox::title { subcontrol-origin: margin; left: 0px; padding: 0px; }"
     );
+    
+    auto* groupLayout = new QVBoxLayout(group);
+    groupLayout->setContentsMargins(0, 8, 0, 0);
     
     auto* frame = new QFrame(group);
     frame->setStyleSheet("QFrame { background: #0A0A0A; border: 1px solid #222222; border-radius: 6px; }");
@@ -251,8 +256,6 @@ QGroupBox* MetricsPanel::createAccessGroup() {
     
     frameLayout->addLayout(rateLayout);
 
-    auto* groupLayout = new QVBoxLayout(group);
-    groupLayout->setContentsMargins(0, 8, 0, 0);
     groupLayout->addWidget(frame);
 
     return group;

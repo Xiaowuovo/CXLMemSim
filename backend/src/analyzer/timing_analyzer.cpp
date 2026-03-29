@@ -8,6 +8,7 @@
 #include <chrono>
 #include <thread>
 #include <cmath>
+#include <algorithm>
 
 namespace cxlsim {
 
@@ -147,21 +148,63 @@ void TimingAnalyzer::process_epoch() {
     // Update bandwidth statistics
     update_bandwidth_stats(samples);
 
-    // Process each sample
+    // Process each sample and collect latencies for percentile calculation
     double total_latency = 0.0;
+    std::vector<double> cxl_latencies; // 用于计算P95/P99
 
     for (const auto& sample : samples) {
         if (sample.is_l3_miss) {
             current_stats_.l3_misses++;
-            process_sample(sample);
-            total_latency += sample.latency_cycles;  // Approximation
+            
+            // Check if this is a CXL access
+            std::string device_id = find_device_for_address(sample.virtual_addr);
+            if (!device_id.empty()) {
+                current_stats_.cxl_accesses++;
+                
+                // Calculate latency
+                double latency_ns = latency_model_.calculate_access_latency(sample, device_id, topology_);
+                total_latency += latency_ns;
+                cxl_latencies.push_back(latency_ns);
+                
+                // Inject delay if enabled
+                if (config_.enable_injection) {
+                    inject_delay(static_cast<uint64_t>(latency_ns));
+                    current_stats_.total_injected_delay_ns += latency_ns;
+                }
+            } else {
+                // Local DRAM access
+                current_stats_.local_dram_accesses++;
+            }
         }
     }
 
     // Calculate average latency
     if (current_stats_.cxl_accesses > 0) {
         current_stats_.avg_latency_ns = total_latency / current_stats_.cxl_accesses;
+        
+        // Calculate P95 and P99 latencies
+        if (!cxl_latencies.empty()) {
+            std::sort(cxl_latencies.begin(), cxl_latencies.end());
+            size_t p95_idx = static_cast<size_t>(cxl_latencies.size() * 0.95);
+            size_t p99_idx = static_cast<size_t>(cxl_latencies.size() * 0.99);
+            
+            if (p95_idx >= cxl_latencies.size()) p95_idx = cxl_latencies.size() - 1;
+            if (p99_idx >= cxl_latencies.size()) p99_idx = cxl_latencies.size() - 1;
+            
+            current_stats_.p95_latency_ns = cxl_latencies[p95_idx];
+            current_stats_.p99_latency_ns = cxl_latencies[p99_idx];
+        }
+        
+        // Simulate queuing delay (10% of avg latency as congestion overhead)
+        current_stats_.queuing_delay_ns = current_stats_.avg_latency_ns * 0.1;
     }
+
+    // Calculate link utilization (simplified: based on access rate)
+    double epoch_duration_s = config_.epoch_duration_ms / 1000.0;
+    double bytes_per_epoch = current_stats_.cxl_accesses * 64.0; // 64 bytes per cache line
+    double bandwidth_used_gbps = (bytes_per_epoch / epoch_duration_s) / 1e9;
+    double max_bandwidth_gbps = 64.0; // CXL 2.0: 64 GB/s
+    current_stats_.link_utilization_pct = std::min(100.0, (bandwidth_used_gbps / max_bandwidth_gbps) * 100.0);
 
     // Print stats periodically
     if (config_.verbose_logging && total_epochs_ % 10 == 0) {
