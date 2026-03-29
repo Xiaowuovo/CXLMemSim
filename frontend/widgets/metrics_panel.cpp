@@ -59,47 +59,48 @@ void MetricsPanel::setupUI() {
     
     // ── 科研关键指标：带宽和延迟仪表盘（最突出）──
     auto* dashboardFrame = new QFrame(this);
-    dashboardFrame->setStyleSheet("QFrame { background: #0A0A0A; border: 1px solid #222222; border-radius: 6px; padding: 12px; }");
+    dashboardFrame->setStyleSheet("QFrame { background: #0A0A0A; border: 1px solid #222222; border-radius: 6px; padding: 8px; }");
     auto* dashLayout = new QHBoxLayout(dashboardFrame);
-    dashLayout->setSpacing(16);
+    dashLayout->setSpacing(8);
+    dashLayout->setContentsMargins(4, 4, 4, 4);
     
     // 带宽仪表
     auto* bwBox = new QVBoxLayout();
-    auto* bwLabel = new QLabel("实时带宽 (GB/s)", this);
+    bwBox->setSpacing(2);
+    auto* bwLabel = new QLabel("Bandwidth (GB/s)", this);
     bwLabel->setStyleSheet("color: #888888; font-size: 10px; text-align: center;");
     bwLabel->setAlignment(Qt::AlignCenter);
     bwBox->addWidget(bwLabel);
     
     bandwidthDisplay_ = new QLabel("0.0", this);
     bandwidthDisplay_->setStyleSheet(
-        "color: #4ADE80; font-size: 24px; font-weight: 600; "
-        "font-family: 'Roboto Mono', 'Consolas', 'Monaco', monospace; "
-        "line-height: 1.4; padding: 8px 0;");
+        "color: #4ADE80; font-size: 20px; font-weight: 600; "
+        "font-family: 'JetBrains Mono', 'Consolas', monospace; ");
     bandwidthDisplay_->setAlignment(Qt::AlignCenter);
-    bandwidthDisplay_->setMinimumHeight(48);
+    bandwidthDisplay_->setMinimumHeight(32);
     bwBox->addWidget(bandwidthDisplay_);
     dashLayout->addLayout(bwBox, 1);
     
     // 分隔线
     auto* vline = new QFrame(this);
     vline->setFrameShape(QFrame::VLine);
-    vline->setStyleSheet("border: none; background: #333333; max-width: 1px;");
+    vline->setStyleSheet("border: none; background: #333333; max-width: 1px; margin: 4px 0;");
     dashLayout->addWidget(vline);
     
     // 延迟仪表
     auto* latBox = new QVBoxLayout();
-    auto* latLabel = new QLabel("平均延迟 (ns)", this);
+    latBox->setSpacing(2);
+    auto* latLabel = new QLabel("Avg Latency (ns)", this);
     latLabel->setStyleSheet("color: #888888; font-size: 10px; text-align: center;");
     latLabel->setAlignment(Qt::AlignCenter);
     latBox->addWidget(latLabel);
     
     latencyDisplay_ = new QLabel("0.0", this);
     latencyDisplay_->setStyleSheet(
-        "color: #FBBF24; font-size: 24px; font-weight: 600; "
-        "font-family: 'Roboto Mono', 'Consolas', 'Monaco', monospace; "
-        "line-height: 1.4; padding: 8px 0;");
+        "color: #FBBF24; font-size: 20px; font-weight: 600; "
+        "font-family: 'JetBrains Mono', 'Consolas', monospace; ");
     latencyDisplay_->setAlignment(Qt::AlignCenter);
-    latencyDisplay_->setMinimumHeight(48);
+    latencyDisplay_->setMinimumHeight(32);
     latBox->addWidget(latencyDisplay_);
     dashLayout->addLayout(latBox, 1);
     
@@ -127,36 +128,14 @@ void MetricsPanel::setupUI() {
     mainLayout->addWidget(epochFrame);
     
     // ══════════════════════════════════════════════════════════
-    // 两列布局：左列统计数据，右列图表
+    // 单列垂直布局：避免横向挤压和文字截断
     // ══════════════════════════════════════════════════════════
-    auto* twoColumnLayout = new QHBoxLayout();
-    twoColumnLayout->setSpacing(10);
     
-    // ── 左列：统计数据 ──
-    auto* leftColumn = new QWidget(this);
-    auto* leftLayout = new QVBoxLayout(leftColumn);
-    leftLayout->setContentsMargins(0, 0, 0, 0);
-    leftLayout->setSpacing(10);
+    mainLayout->addWidget(createAccessGroup());
+    mainLayout->addWidget(createLatencyGroup());
     
-    leftLayout->addWidget(createAccessGroup());
-    leftLayout->addWidget(createLatencyGroup());
-    leftLayout->addStretch();
-    
-    twoColumnLayout->addWidget(leftColumn, 1);
-    
-    // ── 右列：实时趋势图表 ──
-    auto* rightColumn = new QWidget(this);
-    auto* rightLayout = new QVBoxLayout(rightColumn);
-    rightLayout->setContentsMargins(0, 0, 0, 0);
-    rightLayout->setSpacing(10);
-    
-    rightLayout->addWidget(createChartGroup());
-    rightLayout->addStretch();
-    
-    twoColumnLayout->addWidget(rightColumn, 1);
-    
-    mainLayout->addLayout(twoColumnLayout);
-    mainLayout->addStretch();
+    // ── 实时趋势图表区域 ──
+    mainLayout->addWidget(createChartGroup(), 1); // 1 = stretch factor, take remaining space
 }
 
 QGroupBox* MetricsPanel::createEpochGroup() {
@@ -205,21 +184,21 @@ QGroupBox* MetricsPanel::createAccessGroup() {
 
     auto* layout = new QFormLayout();
     layout->setSpacing(8);
-    layout->setLabelAlignment(Qt::AlignLeft);
-    layout->setFormAlignment(Qt::AlignRight | Qt::AlignTop);
+    layout->setLabelAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    layout->setFormAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
     totalAccesses_ = makeValueLabel(this, "#EDEDED");
-    auto* tlbl = new QLabel("Total Accesses", this);
+    auto* tlbl = new QLabel("Total Acc", this);
     tlbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
     layout->addRow(tlbl, totalAccesses_);
 
     l3Misses_ = makeValueLabel(this, "#F87171");
-    auto* l3lbl = new QLabel("L3 Miss Rate", this);
+    auto* l3lbl = new QLabel("L3 Misses", this);
     l3lbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
     layout->addRow(l3lbl, l3Misses_);
 
     cxlAccesses_ = makeValueLabel(this, "#60A5FA");
-    auto* cxllbl = new QLabel("CXL Accesses", this);
+    auto* cxllbl = new QLabel("CXL Acc", this);
     cxllbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
     layout->addRow(cxllbl, cxlAccesses_);
     
@@ -232,18 +211,18 @@ QGroupBox* MetricsPanel::createAccessGroup() {
     frameLayout->addWidget(sep1);
 
     auto* tieringLayout = new QHBoxLayout();
-    auto* tieringLbl = new QLabel("Local DRAM vs CXL Ratio", this);
+    auto* tieringLbl = new QLabel("DRAM vs CXL", this);
     tieringLbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
     tieringLayout->addWidget(tieringLbl);
     
     tieringRatio_ = new QLabel("0:0", this);
-    tieringRatio_->setStyleSheet("color: #10B981; font-size: 12px; font-weight: 600; background: transparent;");
+    tieringRatio_->setStyleSheet("color: #10B981; font-size: 11px; font-weight: 600; background: transparent;");
     tieringLayout->addWidget(tieringRatio_, 0, Qt::AlignRight);
     frameLayout->addLayout(tieringLayout);
 
     // ── 链路利用率进度条 ──
     auto* linkLayout = new QHBoxLayout();
-    auto* linkLbl = new QLabel("Link Utilization", this);
+    auto* linkLbl = new QLabel("Link Util", this);
     linkLbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
     linkLayout->addWidget(linkLbl);
     
@@ -257,17 +236,18 @@ QGroupBox* MetricsPanel::createAccessGroup() {
         "QProgressBar::chunk { background: #10B981; border-radius: 3px; }"
     );
     linkLayout->addWidget(linkUtilBar_, 1, Qt::AlignVCenter);
+    
     frameLayout->addLayout(linkLayout);
 
-    // Separator
+    // ── L3 Miss Rate 进度条 ──
     auto* line = new QFrame(frame);
     line->setFrameShape(QFrame::HLine);
     line->setStyleSheet("border: none; background: #222222; max-height: 1px;");
     frameLayout->addWidget(line);
 
     auto* rateLayout = new QHBoxLayout();
-    auto* rateLbl = new QLabel("L3 Miss Rate", this);
-    rateLbl->setStyleSheet("color: #888888; font-size: 12px; background: transparent; border: none;");
+    auto* rateLbl = new QLabel("L3 Miss %", this);
+    rateLbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
     rateLayout->addWidget(rateLbl);
     
     missRate_ = new QProgressBar(this);
@@ -300,32 +280,33 @@ QGroupBox* MetricsPanel::createLatencyGroup() {
     auto* layout = new QFormLayout(frame);
     layout->setContentsMargins(12, 12, 12, 12);
     layout->setSpacing(8);
-    layout->setLabelAlignment(Qt::AlignLeft);
+    layout->setLabelAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    layout->setFormAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
     avgLatency_ = makeValueLabel(this, "#FBBF24");
-    auto* albl = new QLabel("Avg CXL Latency", this);
-    albl->setStyleSheet("color: #888888; font-size: 12px; background: transparent; border: none;");
+    auto* albl = new QLabel("Avg Latency", this);
+    albl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
     layout->addRow(albl, avgLatency_);
 
     // ── CXL科研关键指标：尾延迟 ──
     p95Latency_ = makeValueLabel(this, "#F97316"); // Orange
-    auto* p95lbl = new QLabel("P95 Latency (抖动)", this);
-    p95lbl->setStyleSheet("color: #888888; font-size: 12px; background: transparent; border: none;");
+    auto* p95lbl = new QLabel("P95 Latency", this);
+    p95lbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
     layout->addRow(p95lbl, p95Latency_);
 
     p99Latency_ = makeValueLabel(this, "#EF4444"); // Red
-    auto* p99lbl = new QLabel("P99 Latency (最坏)", this);
-    p99lbl->setStyleSheet("color: #888888; font-size: 12px; background: transparent; border: none;");
+    auto* p99lbl = new QLabel("P99 Latency", this);
+    p99lbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
     layout->addRow(p99lbl, p99Latency_);
 
     queuingDelay_ = makeValueLabel(this, "#8B5CF6"); // Purple
-    auto* qlbl = new QLabel("Queuing Delay (拥塞)", this);
-    qlbl->setStyleSheet("color: #888888; font-size: 12px; background: transparent; border: none;");
+    auto* qlbl = new QLabel("Queuing Delay", this);
+    qlbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
     layout->addRow(qlbl, queuingDelay_);
 
     totalDelay_ = makeValueLabel(this, "#A1A1AA");
-    auto* tdlbl = new QLabel("Total Injected Delay", this);
-    tdlbl->setStyleSheet("color: #888888; font-size: 12px; background: transparent; border: none;");
+    auto* tdlbl = new QLabel("Total Delay", this);
+    tdlbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
     layout->addRow(tdlbl, totalDelay_);
 
     auto* groupLayout = new QVBoxLayout(group);

@@ -59,7 +59,7 @@ void SidebarWidget::setupUI() {
     mainLayout_->addWidget(wlBtn);
     
     // 基准测试页面按钮
-    auto* benchBtn = createIconButton("📌", "基准测试\nBenchmark", BENCHMARK);
+    auto* benchBtn = createIconButton("⚑", "基准测试\nBenchmark", BENCHMARK);
     buttonGroup_->addButton(benchBtn, BENCHMARK);
     mainLayout_->addWidget(benchBtn);
     
@@ -71,7 +71,7 @@ void SidebarWidget::setupUI() {
     divider1->setStyleSheet("background: #1A1A1A; max-height: 1px; margin: 8px 8px;");
     mainLayout_->addWidget(divider1);
     
-    auto* exportBtn = new QPushButton("📊", this);
+    auto* exportBtn = new QPushButton("⎘", this);
     exportBtn->setToolTip("导出数据\nExport Data");
     exportBtn->setFixedSize(48, 44);
     exportBtn->setCursor(Qt::PointingHandCursor);
