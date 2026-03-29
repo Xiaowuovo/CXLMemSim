@@ -8,6 +8,7 @@
 #include <QFile>
 #include <QTextStream>
 #include <QDateTime>
+#include <QTimer>
 
 ExportDialog::ExportDialog(QWidget *parent)
     : QDialog(parent)
@@ -222,7 +223,7 @@ void ExportDialog::onExport() {
             QFile file(fileName);
             if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
                 QTextStream out(&file);
-                out.setCodec("UTF-8");
+                // Qt6: QTextStream默认使用UTF-8，无需setCodec
                 out << csv;
                 file.close();
                 exportedFiles << fileName;
