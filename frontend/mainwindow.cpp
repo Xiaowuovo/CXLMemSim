@@ -727,12 +727,34 @@ void MainWindow::onStartSimulation() {
         
         // 创建并配置MockTracer（用于模拟内存访问事件）
         auto tracer = std::make_shared<cxlsim::MockTracer>();
-        tracer->set_simulation_params(0.05, 100); // 5% L3 miss rate, 100ns latency
-        tracer->set_address_range(0x1000000, 0x10000000);
-        tracer->initialize(0); // pid不重要，MockTracer不使用
+        tracer->set_simulation_params(0.20, 150); // 20% L3 miss rate, 150ns latency
+        tracer->set_address_range(0x100000000, 0x200000000); // 4GB-8GB range
+        tracer->initialize(0);
         analyzer_->set_tracer(tracer);
         
-        if (logView_) logView_->append("[INFO] ✓ MockTracer 已配置");
+        // 配置地址映射：将MockTracer生成的地址映射到CXL设备
+        // 这是关键：没有地址映射，所有内存访问都不会被识别为CXL访问
+        uint64_t base_addr = 0x100000000; // 4GB起始（每次重新初始化）
+        for (const auto& device : config_.cxl_devices) {
+            cxlsim::AddressMapping mapping;
+            mapping.device_id = device.id;
+            // 为每个CXL设备分配地址空间
+            // 简化：每个设备分配1GB空间
+            mapping.start_addr = base_addr;
+            mapping.end_addr = base_addr + (1ULL << 30); // +1GB
+            base_addr = mapping.end_addr;
+            
+            analyzer_->add_address_mapping(mapping);
+            
+            if (logView_) {
+                logView_->append(QString("[INFO] 地址映射: %1 -> 0x%2-0x%3")
+                    .arg(QString::fromStdString(device.id))
+                    .arg(mapping.start_addr, 0, 16)
+                    .arg(mapping.end_addr, 0, 16));
+            }
+        }
+        
+        if (logView_) logView_->append("[INFO] ✓ MockTracer 已配置 (20% L3 miss, 150ns)");
     }
 
     // 启动分析器后台线程

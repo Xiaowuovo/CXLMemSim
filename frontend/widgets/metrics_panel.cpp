@@ -14,13 +14,13 @@
 static QLabel* makeValueLabel(QWidget* parent, const QString& color = "#EDEDED") {
     auto* lbl = new QLabel("0", parent);
     lbl->setStyleSheet(QString(
-        "font-size:12px; font-weight:600; color:%1; "
+        "font-size:13px; font-weight:600; color:%1; "
         "background:transparent; border:none; "
-        "padding:2px 4px; min-width:70px; max-width:150px; "
+        "padding:6px 12px; min-width:80px; "
         "font-family: 'JetBrains Mono', 'Consolas', monospace;").arg(color));
     lbl->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     lbl->setWordWrap(false);
-    lbl->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    lbl->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     return lbl;
 }
 
@@ -168,8 +168,8 @@ QGroupBox* MetricsPanel::createAccessGroup() {
     auto* frame = new QFrame(group);
     frame->setStyleSheet("QFrame { background: #0A0A0A; border: 1px solid #222222; border-radius: 6px; }");
     auto* frameLayout = new QVBoxLayout(frame);
-    frameLayout->setContentsMargins(12, 12, 12, 12);
-    frameLayout->setSpacing(8);
+    frameLayout->setContentsMargins(16, 16, 16, 16);
+    frameLayout->setSpacing(12);
 
     auto* layout = new QFormLayout();
     layout->setSpacing(8);
