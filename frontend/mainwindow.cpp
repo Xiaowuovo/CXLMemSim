@@ -497,16 +497,6 @@ void MainWindow::createConnections() {
         connect(sidebar_, &SidebarWidget::pageChanged, this, &MainWindow::onPageChanged);
         
         // 侧边栏功能按钮
-        connect(sidebar_, &SidebarWidget::applyTopologyRequested, this, [this]() {
-            if (topologyEditor_ && expPanel_) {
-                auto cfg = topologyEditor_->getCurrentConfig();
-                expPanel_->injectTopology(cfg);
-                sidebar_->setActivePage(SidebarWidget::EXPERIMENT);
-                updateStatus("拓扑已注入实验系统");
-                if (logView_) logView_->append("[INFO] ➜ 拓扑已应用到实验系统");
-            }
-        });
-        
         connect(sidebar_, &SidebarWidget::pinBaselineRequested, this, [this]() {
             if (metricsPanel_) {
                 metricsPanel_->pinCurrentAsBaseline();

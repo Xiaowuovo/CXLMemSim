@@ -46,6 +46,8 @@ MetricsPanel::MetricsPanel(QWidget *parent)
     , bandwidthChart_(nullptr)
     , chartTabs_(nullptr)
     , missRateChart_(nullptr)
+    , benchmarkWidget_(nullptr)
+    , comparisonWidget_(nullptr)
 {
     setupUI();
 }
@@ -128,6 +130,24 @@ void MetricsPanel::setupUI() {
     
     mainLayout->addWidget(createAccessGroup());
     mainLayout->addWidget(createLatencyGroup());
+    
+    // ══════════════════════════════════════════════════════════
+    // 基准测试配置区（新增）
+    // ══════════════════════════════════════════════════════════
+    benchmarkWidget_ = new BenchmarkWidget(this);
+    connect(benchmarkWidget_, &BenchmarkWidget::baselineFixed,
+            this, &MetricsPanel::onBaselineFixed);
+    connect(benchmarkWidget_, &BenchmarkWidget::baselineCleared,
+            this, &MetricsPanel::onBaselineCleared);
+    mainLayout->addWidget(benchmarkWidget_);
+    
+    // ══════════════════════════════════════════════════════════
+    // 性能对比视图（新增）
+    // ══════════════════════════════════════════════════════════
+    comparisonWidget_ = new ComparisonWidget(this);
+    comparisonWidget_->setMinimumHeight(280);
+    mainLayout->addWidget(comparisonWidget_);
+    
     mainLayout->addWidget(createChartGroup());
     mainLayout->addStretch();
 }
@@ -347,6 +367,9 @@ QGroupBox* MetricsPanel::createChartGroup() {
 }
 
 void MetricsPanel::updateStats(const cxlsim::EpochStats& stats) {
+    // 保存当前统计数据用于对比
+    currentStats_ = stats;
+    
     epochNumber_->display(static_cast<int>(stats.epoch_number));
 
     // ── 科研关键：实时带宽和延迟仪表盘 ──
@@ -405,6 +428,54 @@ void MetricsPanel::updateStats(const cxlsim::EpochStats& stats) {
     latencyChart_->addDataPoint(stats.avg_latency_ns);
     missRateChart_->addDataPoint(missRatePct);
     bandwidthChart_->addDataPoint(bw);  // 复用前面计算的带宽值
+    
+    // 如果有基准，更新对比视图
+    if (benchmarkWidget_ && benchmarkWidget_->hasBaseline() && comparisonWidget_) {
+        BenchmarkWidget::BenchmarkStats current;
+        current.avg_latency_ns = stats.avg_latency_ns;
+        current.p95_latency_ns = stats.p95_latency_ns;
+        current.p99_latency_ns = stats.p99_latency_ns;
+        current.bandwidth_gbps = bw;
+        current.link_utilization_pct = stats.link_utilization_pct;
+        current.total_accesses = stats.total_accesses;
+        current.cxl_accesses = stats.cxl_accesses;
+        current.local_accesses = stats.local_dram_accesses;
+        
+        comparisonWidget_->updateComparison(current, benchmarkWidget_->getCurrentBaseline());
+    }
+}
+
+void MetricsPanel::onBaselineFixed(const BenchmarkWidget::BenchmarkStats& stats) {
+    // 固定图表基准线（幽灵折线）
+    if (latencyChart_) latencyChart_->pinCurrentAsBaseline("Baseline");
+    if (bandwidthChart_) bandwidthChart_->pinCurrentAsBaseline("Baseline");
+    if (missRateChart_) missRateChart_->pinCurrentAsBaseline("Baseline");
+    
+    // 初始化对比视图
+    if (comparisonWidget_) {
+        BenchmarkWidget::BenchmarkStats current;
+        current.avg_latency_ns = currentStats_.avg_latency_ns;
+        current.p95_latency_ns = currentStats_.p95_latency_ns;
+        current.p99_latency_ns = currentStats_.p99_latency_ns;
+        double bw = (currentStats_.total_accesses * 64.0) / 0.01 / 1e9;
+        current.bandwidth_gbps = bw;
+        current.link_utilization_pct = currentStats_.link_utilization_pct;
+        current.total_accesses = currentStats_.total_accesses;
+        current.cxl_accesses = currentStats_.cxl_accesses;
+        current.local_accesses = currentStats_.local_dram_accesses;
+        
+        comparisonWidget_->updateComparison(current, stats);
+    }
+}
+
+void MetricsPanel::onBaselineCleared() {
+    // 清除图表基准线
+    clearBaseline();
+    
+    // 清除对比视图
+    if (comparisonWidget_) {
+        comparisonWidget_->clear();
+    }
 }
 
 void MetricsPanel::reset() {

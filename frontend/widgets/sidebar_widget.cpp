@@ -66,30 +66,25 @@ void SidebarWidget::setupUI() {
     divider1->setStyleSheet("background: #1A1A1A; max-height: 1px; margin: 8px 8px;");
     mainLayout_->addWidget(divider1);
     
-    auto* applyTopoBtn = createIconButton("➜", "应用拓扑\nApply Topology", -1);
-    applyTopoBtn->setStyleSheet(
-        "QPushButton{background:#0A3D2C;color:#6EE7B7;border:1px solid #166534;"
-        "border-radius:6px;font-size:18px;font-weight:600;min-height:40px;}"
-        "QPushButton:hover{background:#14532D;border-color:#22C55E;}"
-        "QPushButton:checked{background:#14532D;border-color:#22C55E;}");
-    connect(applyTopoBtn, &QPushButton::clicked, this, &SidebarWidget::applyTopologyRequested);
-    mainLayout_->addWidget(applyTopoBtn);
-    
-    auto* pinBtn = createIconButton("📌", "固定基准\nPin Baseline", -1);
+    auto* pinBtn = new QPushButton("📌", this);
+    pinBtn->setToolTip("固定基准\nPin Baseline");
+    pinBtn->setFixedSize(48, 40);
+    pinBtn->setCursor(Qt::PointingHandCursor);
     pinBtn->setStyleSheet(
         "QPushButton{background:#1E3A8A;color:#DBEAFE;border:1px solid #2563EB;"
-        "border-radius:6px;font-size:16px;font-weight:600;min-height:40px;}"
-        "QPushButton:hover{background:#1D4ED8;border-color:#3B82F6;}"
-        "QPushButton:checked{background:#1D4ED8;border-color:#3B82F6;}");
+        "border-radius:6px;font-size:16px;font-weight:600;}"
+        "QPushButton:hover{background:#1D4ED8;border-color:#3B82F6;}");
     connect(pinBtn, &QPushButton::clicked, this, &SidebarWidget::pinBaselineRequested);
     mainLayout_->addWidget(pinBtn);
     
-    auto* exportBtn = createIconButton("📊", "导出数据\nExport Data", -1);
+    auto* exportBtn = new QPushButton("📊", this);
+    exportBtn->setToolTip("导出数据\nExport Data");
+    exportBtn->setFixedSize(48, 40);
+    exportBtn->setCursor(Qt::PointingHandCursor);
     exportBtn->setStyleSheet(
         "QPushButton{background:#064E3B;color:#6EE7B7;border:1px solid #059669;"
-        "border-radius:6px;font-size:16px;font-weight:600;min-height:40px;}"
-        "QPushButton:hover{background:#047857;border-color:#10B981;}"
-        "QPushButton:checked{background:#047857;border-color:#10B981;}");
+        "border-radius:6px;font-size:16px;font-weight:600;}"
+        "QPushButton:hover{background:#047857;border-color:#10B981;}");
     connect(exportBtn, &QPushButton::clicked, this, &SidebarWidget::exportDataRequested);
     mainLayout_->addWidget(exportBtn);
     
