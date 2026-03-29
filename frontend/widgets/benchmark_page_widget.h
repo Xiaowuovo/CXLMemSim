@@ -4,7 +4,7 @@
 #include <QWidget>
 #include "benchmark_widget.h"
 #include "comparison_widget.h"
-#include "common_types.h"
+#include "analyzer/timing_analyzer.h"
 
 class QVBoxLayout;
 

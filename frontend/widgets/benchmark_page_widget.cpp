@@ -35,11 +35,29 @@ void BenchmarkPageWidget::setupUI() {
     // 基准测试配置区
     benchmarkWidget_ = new BenchmarkWidget(this);
     connect(benchmarkWidget_, &BenchmarkWidget::baselineFixed, 
-            this, [this](const cxlsim::EpochStats& baseline) {
-        emit baselineFixed(baseline);
-        // 更新对比视图
+            this, [this](const BenchmarkWidget::BenchmarkStats& baseline) {
+        // 转换为EpochStats发送信号
+        cxlsim::EpochStats stats;
+        stats.avg_latency_ns = baseline.avg_latency_ns;
+        stats.p95_latency_ns = baseline.p95_latency_ns;
+        stats.p99_latency_ns = baseline.p99_latency_ns;
+        stats.total_accesses = baseline.total_accesses;
+        stats.cxl_accesses = baseline.cxl_accesses;
+        stats.local_dram_accesses = baseline.local_accesses;
+        emit baselineFixed(stats);
+        
+        // 更新对比视图 - 将当前数据转换为BenchmarkStats
         if (comparisonWidget_) {
-            comparisonWidget_->updateComparison(currentStats_, baseline);
+            BenchmarkWidget::BenchmarkStats current;
+            current.avg_latency_ns = currentStats_.avg_latency_ns;
+            current.p95_latency_ns = currentStats_.p95_latency_ns;
+            current.p99_latency_ns = currentStats_.p99_latency_ns;
+            current.bandwidth_gbps = (currentStats_.total_accesses * 64.0) / 0.01 / 1e9;
+            current.link_utilization_pct = currentStats_.link_utilization_pct;
+            current.total_accesses = currentStats_.total_accesses;
+            current.cxl_accesses = currentStats_.cxl_accesses;
+            current.local_accesses = currentStats_.local_dram_accesses;
+            comparisonWidget_->updateComparison(current, baseline);
         }
     });
     connect(benchmarkWidget_, &BenchmarkWidget::baselineCleared,
@@ -47,7 +65,7 @@ void BenchmarkPageWidget::setupUI() {
         emit baselineCleared();
         // 清空对比视图
         if (comparisonWidget_) {
-            comparisonWidget_->clearComparison();
+            comparisonWidget_->clear();
         }
     });
     mainLayout->addWidget(benchmarkWidget_);
@@ -63,15 +81,21 @@ void BenchmarkPageWidget::setupUI() {
 void BenchmarkPageWidget::updateCurrentStats(const cxlsim::EpochStats& stats) {
     currentStats_ = stats;
     
-    // 更新基准测试widget
-    if (benchmarkWidget_) {
-        benchmarkWidget_->updateCurrentStats(stats);
-    }
-    
     // 如果有基准数据，更新对比视图
-    if (comparisonWidget_ && benchmarkWidget_->hasBaseline()) {
-        auto baseline = benchmarkWidget_->getBaselineStats();
-        comparisonWidget_->updateComparison(stats, baseline);
+    if (comparisonWidget_ && benchmarkWidget_ && benchmarkWidget_->hasBaseline()) {
+        // 将当前EpochStats转换为BenchmarkStats
+        BenchmarkWidget::BenchmarkStats current;
+        current.avg_latency_ns = stats.avg_latency_ns;
+        current.p95_latency_ns = stats.p95_latency_ns;
+        current.p99_latency_ns = stats.p99_latency_ns;
+        current.bandwidth_gbps = (stats.total_accesses * 64.0) / 0.01 / 1e9;
+        current.link_utilization_pct = stats.link_utilization_pct;
+        current.total_accesses = stats.total_accesses;
+        current.cxl_accesses = stats.cxl_accesses;
+        current.local_accesses = stats.local_dram_accesses;
+        
+        auto baseline = benchmarkWidget_->getCurrentBaseline();
+        comparisonWidget_->updateComparison(current, baseline);
     }
 }
 
@@ -80,7 +104,7 @@ void BenchmarkPageWidget::reset() {
         benchmarkWidget_->clearBaseline();
     }
     if (comparisonWidget_) {
-        comparisonWidget_->clearComparison();
+        comparisonWidget_->clear();
     }
     currentStats_ = cxlsim::EpochStats();
 }
