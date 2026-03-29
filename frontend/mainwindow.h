@@ -48,7 +48,6 @@ private slots:
     void onResetSimulation();
 
     // 实验菜单
-    void onRunExperiments();
     void onShowDocs();
     void onAbout();
 
@@ -60,7 +59,6 @@ private:
     void setupUI();
     void setupStyle();
     void setupMenuBar();
-    void setupToolBar();
     void setupSidebar();
     void setupPages();
     void createConnections();
@@ -80,10 +78,7 @@ private:
     MetricsPanel* metricsPanel_;
     QTextEdit* logView_;
 
-    // 工具栏控件
-    QPushButton* startButton_;
-    QPushButton* stopButton_;
-    QPushButton* resetButton_;
+    // 状态标签（移到状态栏）
     QLabel* statusLabel_;
 
     // 后端组件

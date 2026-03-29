@@ -53,29 +53,8 @@ MetricsPanel::~MetricsPanel() {}
 
 void MetricsPanel::setupUI() {
     auto* mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(12, 12, 12, 12);
-    mainLayout->setSpacing(16);
-
-    // ── 模式指示器（科研可信度关键）──
-    auto* modeFrame = new QFrame(this);
-    modeFrame->setStyleSheet(
-        "QFrame { background: #1A1A2E; border: 1px solid #4A148C; border-radius: 6px; padding: 8px; }");
-    auto* modeLayout = new QHBoxLayout(modeFrame);
-    modeLayout->setContentsMargins(8, 6, 8, 6);
-    
-    auto* modeIcon = new QLabel("⚡", this);
-    modeIcon->setStyleSheet("color: #CE93D8; font-size: 16px; font-weight: bold;");
-    modeLayout->addWidget(modeIcon);
-    
-    auto* modeLabel = new QLabel("实时仿真模式 (Live Simulation)", this);
-    modeLabel->setStyleSheet("color: #CE93D8; font-size: 11px; font-weight: bold;");
-    modeLayout->addWidget(modeLabel, 1);
-    
-    auto* modeHint = new QLabel("需点击 '▶ 开始模拟' 运行", this);
-    modeHint->setStyleSheet("color: #666666; font-size: 9px;");
-    modeLayout->addWidget(modeHint);
-    
-    mainLayout->addWidget(modeFrame);
+    mainLayout->setContentsMargins(8, 8, 8, 8);
+    mainLayout->setSpacing(10);
     
     // ── 科研关键指标：带宽和延迟仪表盘（最突出）──
     auto* dashboardFrame = new QFrame(this);
@@ -198,17 +177,17 @@ QGroupBox* MetricsPanel::createAccessGroup() {
 
     totalAccesses_ = makeValueLabel(this, "#EDEDED");
     auto* tlbl = new QLabel("Total Accesses", this);
-    tlbl->setStyleSheet("color: #888888; font-size: 12px; background: transparent; border: none;");
+    tlbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
     layout->addRow(tlbl, totalAccesses_);
 
-    l3Misses_ = makeValueLabel(this, "#F87171"); // Vercel Red
-    auto* l3lbl = new QLabel("L3 Misses", this);
-    l3lbl->setStyleSheet("color: #888888; font-size: 12px; background: transparent; border: none;");
+    l3Misses_ = makeValueLabel(this, "#F87171");
+    auto* l3lbl = new QLabel("L3 Miss Rate", this);
+    l3lbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
     layout->addRow(l3lbl, l3Misses_);
 
-    cxlAccesses_ = makeValueLabel(this, "#60A5FA"); // Vercel Blue
+    cxlAccesses_ = makeValueLabel(this, "#60A5FA");
     auto* cxllbl = new QLabel("CXL Accesses", this);
-    cxllbl->setStyleSheet("color: #888888; font-size: 12px; background: transparent; border: none;");
+    cxllbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
     layout->addRow(cxllbl, cxlAccesses_);
     
     frameLayout->addLayout(layout);

@@ -44,9 +44,6 @@ MainWindow::MainWindow(QWidget *parent)
     , expPanel_(nullptr)
     , metricsPanel_(nullptr)
     , logView_(nullptr)
-    , startButton_(nullptr)
-    , stopButton_(nullptr)
-    , resetButton_(nullptr)
     , statusLabel_(nullptr)
     , analyzer_(nullptr)
     , updateTimer_(nullptr)
@@ -309,7 +306,6 @@ void MainWindow::setupUI() {
     setMinimumSize(1200, 700);
 
     setupMenuBar();
-    setupToolBar();
     setupSidebar();
     setupPages();
     createConnections();
@@ -365,274 +361,7 @@ void MainWindow::setupMenuBar() {
     helpMenu->addAction("\u5173\u4e8e(&A)", this, &MainWindow::onAbout);
 }
 
-void MainWindow::setupToolBar() {
-    QToolBar* toolbar = addToolBar("\u4e3b\u5de5\u5177\u680f");
-    toolbar->setMovable(false);
-    toolbar->setIconSize(QSize(16, 16));
-
-    // ══════════════════════════════════════════════════════════
-    // 模拟控制按钮组 - 专业级状态按钮
-    // ══════════════════════════════════════════════════════════
-    startButton_ = new QPushButton("▶ 开始模拟");
-    startButton_->setObjectName("startBtn");
-    startButton_->setMinimumWidth(120);
-    startButton_->setMinimumHeight(32);
-    startButton_->setCursor(Qt::PointingHandCursor);
-    startButton_->setStyleSheet(
-        "QPushButton#startBtn { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #0A3D2C, stop:1 #052E16); "
-        "    color: #6EE7B7; "
-        "    border: 1px solid #166534; "
-        "    border-radius: 7px; "
-        "    padding: 6px 16px; "
-        "    font-weight: 600; "
-        "    font-size: 13px;"
-        "}"
-        "QPushButton#startBtn:hover { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #14532D, stop:1 #0A3D2C); "
-        "    color: #86EFAC; "
-        "    border-color: #22C55E; "
-        "}"
-        "QPushButton#startBtn:pressed { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #052E16, stop:1 #0A3D2C); "
-        "}"
-    );
-    toolbar->addWidget(startButton_);
-
-    stopButton_ = new QPushButton("■ 停止");
-    stopButton_->setObjectName("stopBtn");
-    stopButton_->setEnabled(false);
-    stopButton_->setMinimumWidth(100);
-    stopButton_->setMinimumHeight(32);
-    stopButton_->setCursor(Qt::PointingHandCursor);
-    stopButton_->setStyleSheet(
-        "QPushButton#stopBtn { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #3D0A0A, stop:1 #2E0505); "
-        "    color: #FCA5A5; "
-        "    border: 1px solid #7F1D1D; "
-        "    border-radius: 7px; "
-        "    padding: 6px 16px; "
-        "    font-weight: 600; "
-        "    font-size: 13px;"
-        "}"
-        "QPushButton#stopBtn:hover { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #532D14, stop:1 #3D0A0A); "
-        "    color: #FEE2E2; "
-        "    border-color: #DC2626; "
-        "}"
-        "QPushButton#stopBtn:disabled { "
-        "    background: #0A0A0A; "
-        "    color: #444444; "
-        "    border-color: #1A1A1A; "
-        "}"
-    );
-    toolbar->addWidget(stopButton_);
-
-    resetButton_ = new QPushButton("↺ 重置");
-    resetButton_->setMinimumWidth(100);
-    resetButton_->setMinimumHeight(32);
-    resetButton_->setCursor(Qt::PointingHandCursor);
-    resetButton_->setStyleSheet(
-        "QPushButton { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #1A1A1A, stop:1 #0F0F0F); "
-        "    color: #A1A1AA; "
-        "    border: 1px solid #2A2A2A; "
-        "    border-radius: 7px; "
-        "    padding: 6px 16px; "
-        "    font-weight: 500; "
-        "    font-size: 13px;"
-        "}"
-        "QPushButton:hover { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #252525, stop:1 #1A1A1A); "
-        "    color: #E8E8E8; "
-        "    border-color: #3A3A3A; "
-        "}"
-    );
-    toolbar->addWidget(resetButton_);
-
-    toolbar->addSeparator();
-
-    // ══════════════════════════════════════════════════════════
-    // 实验操作按钮组 - 高对比度操作按钮
-    // ══════════════════════════════════════════════════════════
-    QPushButton* runExpBtn = new QPushButton("★ 运行实验");
-    runExpBtn->setMinimumWidth(110);
-    runExpBtn->setMinimumHeight(32);
-    runExpBtn->setCursor(Qt::PointingHandCursor);
-    runExpBtn->setStyleSheet(
-        "QPushButton { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #3B0764, stop:1 #2E0555); "
-        "    color: #E9D5FF; "
-        "    border: 1px solid #6B21A8; "
-        "    border-radius: 7px; "
-        "    padding: 6px 16px; "
-        "    font-weight: 600; "
-        "    font-size: 13px;"
-        "}"
-        "QPushButton:hover { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #581C87, stop:1 #3B0764); "
-        "    color: #F3E8FF; "
-        "    border-color: #9333EA; "
-        "}"
-    );
-    toolbar->addWidget(runExpBtn);
-
-    QPushButton* injectTopoBtn = new QPushButton("➜ 应用拓扑");
-    injectTopoBtn->setMinimumWidth(110);
-    injectTopoBtn->setMinimumHeight(32);
-    injectTopoBtn->setCursor(Qt::PointingHandCursor);
-    injectTopoBtn->setToolTip("将当前拓扑图的参数注入到实验系统中");
-    injectTopoBtn->setStyleSheet(
-        "QPushButton { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #075985, stop:1 #0C4A6E); "
-        "    color: #BAE6FD; "
-        "    border: 1px solid #0284C7; "
-        "    border-radius: 7px; "
-        "    padding: 6px 16px; "
-        "    font-weight: 600; "
-        "    font-size: 13px;"
-        "}"
-        "QPushButton:hover { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #0369A1, stop:1 #075985); "
-        "    color: #E0F2FE; "
-        "    border-color: #0EA5E9; "
-        "}"
-    );
-
-    toolbar->addWidget(injectTopoBtn);
-
-    toolbar->addSeparator();
-
-    // ══════════════════════════════════════════════════════════
-    // 科研对比工具组 - 专业实验工具
-    // ══════════════════════════════════════════════════════════
-    QPushButton* pinBaselineBtn = new QPushButton("📌 固定基准");
-    pinBaselineBtn->setMinimumWidth(110);
-    pinBaselineBtn->setMinimumHeight(32);
-    pinBaselineBtn->setCursor(Qt::PointingHandCursor);
-    pinBaselineBtn->setToolTip("将当前实验数据固定为基准线，用于多组对比（控制变量法）");
-    pinBaselineBtn->setStyleSheet(
-        "QPushButton { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #1E3A8A, stop:1 #1E40AF); "
-        "    color: #DBEAFE; "
-        "    border: 1px solid #2563EB; "
-        "    border-radius: 7px; "
-        "    padding: 6px 16px; "
-        "    font-weight: 600; "
-        "    font-size: 13px;"
-        "}"
-        "QPushButton:hover { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #1D4ED8, stop:1 #1E3A8A); "
-        "    color: #EFF6FF; "
-        "    border-color: #3B82F6; "
-        "}"
-    );
-    toolbar->addWidget(pinBaselineBtn);
-    connect(pinBaselineBtn, &QPushButton::clicked, this, [this]() {
-        if (metricsPanel_) {
-            metricsPanel_->pinCurrentAsBaseline();
-            updateStatus("✓ 当前数据已固定为基准，可运行新实验对比");
-            if (logView_) logView_->append("[INFO] 📌 基准曲线已固定，可修改拓扑/负载后重新运行对比");
-        }
-    });
-
-    QPushButton* clearBaselineBtn = new QPushButton("✕ 清除基准");
-    clearBaselineBtn->setMinimumWidth(110);
-    clearBaselineBtn->setMinimumHeight(32);
-    clearBaselineBtn->setCursor(Qt::PointingHandCursor);
-    clearBaselineBtn->setToolTip("清除基准线，恢复单组显示");
-    clearBaselineBtn->setStyleSheet(
-        "QPushButton { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #7C2D12, stop:1 #6B1A0A); "
-        "    color: #FED7AA; "
-        "    border: 1px solid #C2410C; "
-        "    border-radius: 7px; "
-        "    padding: 6px 16px; "
-        "    font-weight: 600; "
-        "    font-size: 13px;"
-        "}"
-        "QPushButton:hover { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #9A3412, stop:1 #7C2D12); "
-        "    color: #FEF3C7; "
-        "    border-color: #EA580C; "
-        "}"
-    );
-    toolbar->addWidget(clearBaselineBtn);
-    connect(clearBaselineBtn, &QPushButton::clicked, this, [this]() {
-        if (metricsPanel_) {
-            metricsPanel_->clearBaseline();
-            updateStatus("基准曲线已清除");
-            if (logView_) logView_->append("[INFO] 🗑 基准曲线已清除");
-        }
-    });
-
-    toolbar->addSeparator();
-
-    QPushButton* exportDataBtn = new QPushButton("📊 导出数据");
-    exportDataBtn->setMinimumWidth(110);
-    exportDataBtn->setMinimumHeight(32);
-    exportDataBtn->setCursor(Qt::PointingHandCursor);
-    exportDataBtn->setToolTip("导出实验结果为 CSV/JSON 用于论文绘图 (Python/MATLAB)");
-    exportDataBtn->setStyleSheet(
-        "QPushButton { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #064E3B, stop:1 #065F46); "
-        "    color: #6EE7B7; "
-        "    border: 1px solid #059669; "
-        "    border-radius: 7px; "
-        "    padding: 6px 16px; "
-        "    font-weight: 600; "
-        "    font-size: 13px;"
-        "}"
-        "QPushButton:hover { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #047857, stop:1 #064E3B); "
-        "    color: #A7F3D0; "
-        "    border-color: #10B981; "
-        "}"
-    );
-    toolbar->addWidget(exportDataBtn);
-    connect(exportDataBtn, &QPushButton::clicked, this, &MainWindow::onExportData);
-
-    toolbar->addSeparator();
-
-    QLabel* sep = new QLabel("  \u72b6\u6001: ");
-    sep->setStyleSheet("color:#9E9E9E;");
-    toolbar->addWidget(sep);
-
-    statusLabel_ = new QLabel("\u5c31\u7eea");
-    statusLabel_->setStyleSheet("color:#81C784; font-weight:bold; font-size:12px;");
-    toolbar->addWidget(statusLabel_);
-
-    connect(startButton_,  &QPushButton::clicked, this, &MainWindow::onStartSimulation);
-    connect(stopButton_,   &QPushButton::clicked, this, &MainWindow::onStopSimulation);
-    connect(resetButton_,  &QPushButton::clicked, this, &MainWindow::onResetSimulation);
-    connect(runExpBtn,     &QPushButton::clicked, this, &MainWindow::onRunExperiments);
-    connect(injectTopoBtn, &QPushButton::clicked, this, [this]() {
-        if (topologyEditor_ && expPanel_ && sidebar_) {
-            auto cfg = topologyEditor_->getCurrentConfig();
-            expPanel_->injectTopology(cfg);
-            // 切换到实验页面
-            sidebar_->setActivePage(SidebarWidget::EXPERIMENT);
-            updateStatus("拓扑已注入实验系统");
-        }
-    });
-}
+// 工具栏已删除，功能迁移到侧边栏和拓扑页面
 
 void MainWindow::setupSidebar() {
     sidebar_ = new SidebarWidget(this);
@@ -759,13 +488,7 @@ void MainWindow::onPageChanged(int pageIndex) {
             updateStatus(QString("当前页面: %1").arg(pageNames[pageIndex]));
         }
         
-        // 上下文感知工具栏：根据当前页面动态显示/隐藏按钮
-        bool isTopologyPage = (pageIndex == 0);
-        
-        // 模拟控制按钮：仅在拓扑编辑页显示
-        if (startButton_) startButton_->setVisible(isTopologyPage);
-        if (stopButton_) stopButton_->setVisible(isTopologyPage);
-        if (resetButton_) resetButton_->setVisible(isTopologyPage);
+        // 工具栏已删除，功能已迁移到拓扑页面和侧边栏
     }
 }
 
@@ -773,6 +496,27 @@ void MainWindow::createConnections() {
     // ── 侧边栏页面切换 ──
     if (sidebar_) {
         connect(sidebar_, &SidebarWidget::pageChanged, this, &MainWindow::onPageChanged);
+        
+        // 侧边栏功能按钮
+        connect(sidebar_, &SidebarWidget::applyTopologyRequested, this, [this]() {
+            if (topologyEditor_ && expPanel_) {
+                auto cfg = topologyEditor_->getCurrentConfig();
+                expPanel_->injectTopology(cfg);
+                sidebar_->setActivePage(SidebarWidget::EXPERIMENT);
+                updateStatus("拓扑已注入实验系统");
+                if (logView_) logView_->append("[INFO] ➜ 拓扑已应用到实验系统");
+            }
+        });
+        
+        connect(sidebar_, &SidebarWidget::pinBaselineRequested, this, [this]() {
+            if (metricsPanel_) {
+                metricsPanel_->pinCurrentAsBaseline();
+                updateStatus("✓ 当前数据已固定为基准，可运行新实验对比");
+                if (logView_) logView_->append("[INFO] 📌 基准曲线已固定，可修改拓扑/负载后重新运行对比");
+            }
+        });
+        
+        connect(sidebar_, &SidebarWidget::exportDataRequested, this, &MainWindow::onExportData);
     }
 
     // ── 配置树 -> 拓扑图 ──
@@ -790,6 +534,16 @@ void MainWindow::createConnections() {
                     updateStatus("\u62d3\u6251\u56fe\u5df2\u4fee\u6539");
                     if (logView_) logView_->append("[INFO] \u62d3\u6251\u56fe\u5df2\u4fee\u6539\uff0c\u914d\u7f6e\u5df2\u540c\u6b65");
                 });
+    }
+    
+    // ── 拓扑编辑器模拟控制 -> MainWindow ──
+    if (topologyEditor_) {
+        connect(topologyEditor_, &TopologyEditorWidget::startSimulationRequested,
+                this, &MainWindow::onStartSimulation);
+        connect(topologyEditor_, &TopologyEditorWidget::stopSimulationRequested,
+                this, &MainWindow::onStopSimulation);
+        connect(topologyEditor_, &TopologyEditorWidget::resetSimulationRequested,
+                this, &MainWindow::onResetSimulation);
     }
 
     // ── 实验面板日志转发 ──
@@ -928,24 +682,29 @@ void MainWindow::onStartSimulation() {
         }
     }
 
+    // 启动分析器后台线程
+    if (!analyzer_->start()) {
+        QMessageBox::critical(this, "错误", "无法启动模拟引擎后台线程");
+        if (logView_) logView_->append("[ERROR] 引擎启动失败");
+        analyzer_.reset();
+        return;
+    }
+    
     simulationRunning_ = true;
-    if (startButton_) startButton_->setEnabled(false);
-    if (stopButton_)  stopButton_->setEnabled(true);
     if (statusLabel_) {
         statusLabel_->setText("运行中");
         statusLabel_->setStyleSheet("color:#FF8A65; font-weight:bold; font-size:12px;");
     }
     updateStatus("模拟运行中...");
-    if (logView_) logView_->append("[INFO] ✅ CXL 内存模拟已启动 (Epoch 即将开始跳动)");
+    if (logView_) logView_->append("[INFO] ✅ CXL 内存模拟已启动");
+    if (logView_) logView_->append("[INFO] 📊 Epoch 计数器即将开始跳动...");
 }
 
 void MainWindow::onStopSimulation() {
     if (analyzer_) analyzer_->stop();
     simulationRunning_ = false;
-    if (startButton_) startButton_->setEnabled(true);
-    if (stopButton_)  stopButton_->setEnabled(false);
     if (statusLabel_) {
-        statusLabel_->setText("\u5df2\u505c\u6b62");
+        statusLabel_->setText("已停止");
         statusLabel_->setStyleSheet("color:#EF5350; font-weight:bold; font-size:12px;");
     }
     if (topologyEditor_) topologyEditor_->clearAllMetrics();
@@ -965,13 +724,7 @@ void MainWindow::onResetSimulation() {
     if (logView_) logView_->append("[INFO] \u6a21\u62df\u5df2\u91cd\u7f6e\uff0c\u53ef\u91cd\u65b0\u8fd0\u884c");
 }
 
-void MainWindow::onRunExperiments() {
-    if (sidebar_) {
-        sidebar_->setActivePage(SidebarWidget::EXPERIMENT);
-    }
-    updateStatus("已切换到实验管理页面");
-    if (logView_) logView_->append("[INFO] 请在实验管理页面选择并运行实验");
-}
+// onRunExperiments已删除，实验功能通过侧边栏和实验页面直接访问
 
 void MainWindow::onAbout() {
     QMessageBox::about(this, "\u5173\u4e8e CXLMemSim",

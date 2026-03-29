@@ -160,6 +160,11 @@ signals:
     void addDeviceRequested();
     void addSwitchRequested();
     void removeSelectedRequested();
+    
+    // 模拟控制信号
+    void startSimulationRequested();
+    void stopSimulationRequested();
+    void resetSimulationRequested();
 
 protected:
     void contextMenuEvent(QContextMenuEvent* event) override;

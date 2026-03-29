@@ -31,6 +31,12 @@ public:
 
 signals:
     void pageChanged(int pageIndex);
+    
+    // 功能按钮信号
+    void applyTopologyRequested();
+    void pinBaselineRequested();
+    void clearBaselineRequested();
+    void exportDataRequested();
 
 private:
     void setupUI();

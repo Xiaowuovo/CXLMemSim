@@ -100,28 +100,31 @@ void RealTimeChartWidget::paintEvent(QPaintEvent *event) {
     int graphW = w - graphX - 10;
     int graphH = h - graphY - padding;
 
-    // Draw background
-    painter.fillRect(rect(), Qt::white);
-    painter.setPen(Qt::lightGray);
+    // Draw background (深色主题)
+    painter.fillRect(rect(), QColor(0x0A, 0x0A, 0x0A));
+    painter.setPen(QColor(0x33, 0x33, 0x33));
     painter.drawRect(graphX, graphY, graphW, graphH);
 
     // Draw grid lines (horizontal)
-    painter.setPen(QPen(QColor(240, 240, 240), 1, Qt::DashLine));
+    painter.setPen(QPen(QColor(0x1A, 0x1A, 0x1A), 1, Qt::DashLine));
     for (int i = 1; i < 5; ++i) {
         int y = graphY + (graphH * i / 5);
         painter.drawLine(graphX, y, graphX + graphW, y);
     }
 
     // Draw title
-    painter.setPen(Qt::black);
+    painter.setPen(QColor(0xE8, 0xE8, 0xE8));
     QFont titleFont = font();
     titleFont.setBold(true);
+    titleFont.setPointSize(10);
     painter.setFont(titleFont);
     painter.drawText(rect(), Qt::AlignTop | Qt::AlignHCenter, title_);
 
     // Draw Y-axis labels
-    painter.setFont(font());
-    painter.setPen(Qt::darkGray);
+    QFont labelFont = font();
+    labelFont.setPointSize(9);
+    painter.setFont(labelFont);
+    painter.setPen(QColor(0x88, 0x88, 0x88));
     painter.drawText(QRect(0, graphY - 10, padding, 20), Qt::AlignRight | Qt::AlignVCenter, QString::number(maxValue_, 'f', 0));
     painter.drawText(QRect(0, graphY + graphH - 10, padding, 20), Qt::AlignRight | Qt::AlignVCenter, "0");
 

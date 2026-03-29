@@ -219,6 +219,37 @@ void TopologyEditorWidget::setupToolBar() {
     });
     toolbar_->addWidget(connectModeBtn);
 
+    toolbar_->addSeparator();
+    
+    // ══════════════════════════════════════════════════════════
+    // 模拟控制按钮组
+    // ══════════════════════════════════════════════════════════
+    auto* startBtn = new QToolButton();
+    startBtn->setText("▶ 开始模拟");
+    startBtn->setToolTip("启动CXL内存模拟");
+    startBtn->setStyleSheet(
+        "QToolButton{background:#0A3D2C;color:#6EE7B7;border:1px solid #166534;"
+        "border-radius:4px;padding:6px 12px;font-size:11px;font-weight:600;min-width:80px;}"
+        "QToolButton:hover{background:#14532D;border-color:#22C55E;}");
+    connect(startBtn, &QToolButton::clicked, this, &TopologyEditorWidget::startSimulationRequested);
+    toolbar_->addWidget(startBtn);
+    
+    auto* stopBtn = new QToolButton();
+    stopBtn->setText("■ 停止");
+    stopBtn->setToolTip("停止模拟");
+    stopBtn->setStyleSheet(
+        "QToolButton{background:#3D0A0A;color:#FCA5A5;border:1px solid #7F1D1D;"
+        "border-radius:4px;padding:6px 12px;font-size:11px;font-weight:600;min-width:60px;}"
+        "QToolButton:hover{background:#532D14;border-color:#DC2626;}");
+    connect(stopBtn, &QToolButton::clicked, this, &TopologyEditorWidget::stopSimulationRequested);
+    toolbar_->addWidget(stopBtn);
+    
+    auto* resetBtn = new QToolButton();
+    resetBtn->setText("↺ 重置");
+    resetBtn->setToolTip("重置模拟状态");
+    connect(resetBtn, &QToolButton::clicked, this, &TopologyEditorWidget::resetSimulationRequested);
+    toolbar_->addWidget(resetBtn);
+
     auto* infoLabel = new QLabel("  💡 点击'连接模式'后，依次点击两个节点即可连接  ", toolbar_);
     infoLabel->setStyleSheet("color: #888888; font-size: 12px; font-weight: 500;");
     toolbar_->addWidget(infoLabel);

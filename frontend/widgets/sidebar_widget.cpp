@@ -88,6 +88,47 @@ void SidebarWidget::setupUI() {
     mainLayout_->addWidget(logBtn);
     
     mainLayout_->addStretch();
+    
+    // ══════════════════════════════════════════════════════════
+    // 功能按钮组（底部）
+    // ══════════════════════════════════════════════════════════
+    auto* divider2 = new QFrame(this);
+    divider2->setFrameShape(QFrame::HLine);
+    divider2->setStyleSheet("background: #1A1A1A; max-height: 1px; margin: 8px 8px;");
+    mainLayout_->addWidget(divider2);
+    
+    auto* applyTopoBtn = new QPushButton("➜", this);
+    applyTopoBtn->setToolTip("应用拓扑\nApply Topology");
+    applyTopoBtn->setFixedSize(48, 40);
+    applyTopoBtn->setCursor(Qt::PointingHandCursor);
+    applyTopoBtn->setStyleSheet(
+        "QPushButton{background:#075985;color:#BAE6FD;border:1px solid #0284C7;"
+        "border-radius:6px;font-size:18px;font-weight:600;}"
+        "QPushButton:hover{background:#0369A1;border-color:#0EA5E9;}");
+    connect(applyTopoBtn, &QPushButton::clicked, this, &SidebarWidget::applyTopologyRequested);
+    mainLayout_->addWidget(applyTopoBtn);
+    
+    auto* pinBtn = new QPushButton("📌", this);
+    pinBtn->setToolTip("固定基准\nPin Baseline");
+    pinBtn->setFixedSize(48, 40);
+    pinBtn->setCursor(Qt::PointingHandCursor);
+    pinBtn->setStyleSheet(
+        "QPushButton{background:#1E3A8A;color:#DBEAFE;border:1px solid #2563EB;"
+        "border-radius:6px;font-size:16px;font-weight:600;}"
+        "QPushButton:hover{background:#1D4ED8;border-color:#3B82F6;}");
+    connect(pinBtn, &QPushButton::clicked, this, &SidebarWidget::pinBaselineRequested);
+    mainLayout_->addWidget(pinBtn);
+    
+    auto* exportBtn = new QPushButton("📊", this);
+    exportBtn->setToolTip("导出数据\nExport Data");
+    exportBtn->setFixedSize(48, 40);
+    exportBtn->setCursor(Qt::PointingHandCursor);
+    exportBtn->setStyleSheet(
+        "QPushButton{background:#064E3B;color:#6EE7B7;border:1px solid #059669;"
+        "border-radius:6px;font-size:16px;font-weight:600;}"
+        "QPushButton:hover{background:#047857;border-color:#10B981;}");
+    connect(exportBtn, &QPushButton::clicked, this, &SidebarWidget::exportDataRequested);
+    mainLayout_->addWidget(exportBtn);
 
     // 默认选中拓扑编辑
     topoBtn->setChecked(true);
