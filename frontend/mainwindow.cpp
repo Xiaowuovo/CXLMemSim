@@ -986,10 +986,15 @@ void MainWindow::onExportData() {
     if (workloadWidget_) {
         QJsonObject workload;
         auto wlCfg = workloadWidget_->getWorkloadConfig();
-        workload["mode"] = wlCfg.mode == cxlsim::WorkloadConfig::SYNTHETIC ? "synthetic" : "trace";
+        workload["mode"] = wlCfg.trace_driven ? "trace" : "synthetic";
+        workload["trace_file"] = QString::fromStdString(wlCfg.trace_file_path);
         workload["read_ratio"] = wlCfg.read_ratio;
-        workload["write_ratio"] = wlCfg.write_ratio;
-        workload["access_size_bytes"] = static_cast<int>(wlCfg.access_size_bytes);
+        workload["write_ratio"] = 1.0 - wlCfg.read_ratio;
+        workload["injection_rate_gbps"] = wlCfg.injection_rate_gbps;
+        workload["working_set_gb"] = static_cast<qint64>(wlCfg.working_set_gb);
+        workload["stride_bytes"] = wlCfg.stride_bytes;
+        workload["duration_sec"] = wlCfg.duration_sec;
+        workload["num_threads"] = wlCfg.num_threads;
         configSnapshot["workload"] = workload;
     }
     
