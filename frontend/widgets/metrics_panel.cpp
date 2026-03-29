@@ -120,7 +120,7 @@ void MetricsPanel::setupUI() {
     epochNumber_ = new QLCDNumber(this);
     epochNumber_->setDigitCount(6);
     epochNumber_->setSegmentStyle(QLCDNumber::Flat);
-    epochNumber_->setMaximumHeight(24);  // 缩小高度
+    epochNumber_->setMaximumHeight(24);
     epochNumber_->setStyleSheet(
         "QLCDNumber { background: #111111; color: #4ADE80; border: 1px solid #222222; border-radius: 3px; }");
     epochLayout->addWidget(epochNumber_);
@@ -128,27 +128,50 @@ void MetricsPanel::setupUI() {
     
     mainLayout->addWidget(epochFrame);
     
-    mainLayout->addWidget(createAccessGroup());
-    mainLayout->addWidget(createLatencyGroup());
+    // ══════════════════════════════════════════════════════════
+    // 两列布局：左列统计数据，右列对比和图表
+    // ══════════════════════════════════════════════════════════
+    auto* twoColumnLayout = new QHBoxLayout();
+    twoColumnLayout->setSpacing(10);
     
-    // ══════════════════════════════════════════════════════════
-    // 基准测试配置区（新增）
-    // ══════════════════════════════════════════════════════════
+    // ── 左列：统计数据和基准测试 ──
+    auto* leftColumn = new QWidget(this);
+    auto* leftLayout = new QVBoxLayout(leftColumn);
+    leftLayout->setContentsMargins(0, 0, 0, 0);
+    leftLayout->setSpacing(10);
+    
+    leftLayout->addWidget(createAccessGroup());
+    leftLayout->addWidget(createLatencyGroup());
+    
+    // 基准测试配置区
     benchmarkWidget_ = new BenchmarkWidget(this);
     connect(benchmarkWidget_, &BenchmarkWidget::baselineFixed,
             this, &MetricsPanel::onBaselineFixed);
     connect(benchmarkWidget_, &BenchmarkWidget::baselineCleared,
             this, &MetricsPanel::onBaselineCleared);
-    mainLayout->addWidget(benchmarkWidget_);
+    leftLayout->addWidget(benchmarkWidget_);
+    leftLayout->addStretch();
     
-    // ══════════════════════════════════════════════════════════
-    // 性能对比视图（新增）
-    // ══════════════════════════════════════════════════════════
+    twoColumnLayout->addWidget(leftColumn, 1);
+    
+    // ── 右列：对比视图和图表 ──
+    auto* rightColumn = new QWidget(this);
+    auto* rightLayout = new QVBoxLayout(rightColumn);
+    rightLayout->setContentsMargins(0, 0, 0, 0);
+    rightLayout->setSpacing(10);
+    
+    // 性能对比视图
     comparisonWidget_ = new ComparisonWidget(this);
     comparisonWidget_->setMinimumHeight(280);
-    mainLayout->addWidget(comparisonWidget_);
+    rightLayout->addWidget(comparisonWidget_);
     
-    mainLayout->addWidget(createChartGroup());
+    // 实时趋势图表
+    rightLayout->addWidget(createChartGroup());
+    rightLayout->addStretch();
+    
+    twoColumnLayout->addWidget(rightColumn, 1);
+    
+    mainLayout->addLayout(twoColumnLayout);
     mainLayout->addStretch();
 }
 

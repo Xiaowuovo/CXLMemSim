@@ -68,23 +68,53 @@ void SidebarWidget::setupUI() {
     
     auto* pinBtn = new QPushButton("📌", this);
     pinBtn->setToolTip("固定基准\nPin Baseline");
-    pinBtn->setFixedSize(48, 40);
+    pinBtn->setFixedSize(48, 44);
     pinBtn->setCursor(Qt::PointingHandCursor);
     pinBtn->setStyleSheet(
-        "QPushButton{background:#1E3A8A;color:#DBEAFE;border:1px solid #2563EB;"
-        "border-radius:6px;font-size:16px;font-weight:600;}"
-        "QPushButton:hover{background:#1D4ED8;border-color:#3B82F6;}");
+        "QPushButton {"
+        "    background: transparent;"
+        "    border: none;"
+        "    border-left: 2px solid transparent;"
+        "    border-radius: 6px;"
+        "    color: #666666;"
+        "    font-size: 22px;"
+        "    font-weight: 300;"
+        "    padding: 0;"
+        "    margin: 2px 0;"
+        "}"
+        "QPushButton:hover {"
+        "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, "
+        "        stop:0 rgba(79, 195, 247, 0.08), "
+        "        stop:1 rgba(79, 195, 247, 0.02));"
+        "    color: #EDEDED;"
+        "    border-left-color: #4FC3F7;"
+        "}");
     connect(pinBtn, &QPushButton::clicked, this, &SidebarWidget::pinBaselineRequested);
     mainLayout_->addWidget(pinBtn);
     
     auto* exportBtn = new QPushButton("📊", this);
     exportBtn->setToolTip("导出数据\nExport Data");
-    exportBtn->setFixedSize(48, 40);
+    exportBtn->setFixedSize(48, 44);
     exportBtn->setCursor(Qt::PointingHandCursor);
     exportBtn->setStyleSheet(
-        "QPushButton{background:#064E3B;color:#6EE7B7;border:1px solid #059669;"
-        "border-radius:6px;font-size:16px;font-weight:600;}"
-        "QPushButton:hover{background:#047857;border-color:#10B981;}");
+        "QPushButton {"
+        "    background: transparent;"
+        "    border: none;"
+        "    border-left: 2px solid transparent;"
+        "    border-radius: 6px;"
+        "    color: #666666;"
+        "    font-size: 22px;"
+        "    font-weight: 300;"
+        "    padding: 0;"
+        "    margin: 2px 0;"
+        "}"
+        "QPushButton:hover {"
+        "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, "
+        "        stop:0 rgba(79, 195, 247, 0.08), "
+        "        stop:1 rgba(79, 195, 247, 0.02));"
+        "    color: #EDEDED;"
+        "    border-left-color: #4FC3F7;"
+        "}");
     connect(exportBtn, &QPushButton::clicked, this, &SidebarWidget::exportDataRequested);
     mainLayout_->addWidget(exportBtn);
     
