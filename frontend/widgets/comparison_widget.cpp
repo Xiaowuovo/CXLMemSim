@@ -39,7 +39,6 @@ void ComparisonWidget::paintEvent(QPaintEvent *event) {
     painter.setRenderHint(QPainter::Antialiasing);
 
     int w = width();
-    int h = height();
     int padding = 20;
     int titleHeight = 40;
 

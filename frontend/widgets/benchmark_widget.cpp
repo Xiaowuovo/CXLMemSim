@@ -130,7 +130,7 @@ void BenchmarkWidget::setupUI() {
     // ══════════════════════════════════════════════════════════
     // 状态显示
     // ══════════════════════════════════════════════════════════
-    statusLabel_ = new QLabel("💡 选择负载和对照组，点击"运行基准测试"开始", this);
+    statusLabel_ = new QLabel("💡 选择负载和对照组，点击\"运行基准测试\"开始", this);
     statusLabel_->setStyleSheet(
         "color: #888888; font-size: 12px; padding: 8px 12px; "
         "background: #0A0A0A; border: 1px solid #222222; border-radius: 4px;");
@@ -206,7 +206,7 @@ void BenchmarkWidget::onBenchmarkCompleted(const cxlsim::EpochStats& stats) {
     runBtn_->setEnabled(true);
     fixBtn_->setEnabled(true);
     
-    statusLabel_->setText("✓ 基准测试完成！点击"固定为基准"保存结果");
+    statusLabel_->setText("✓ 基准测试完成！点击\"固定为基准\"保存结果");
     statusLabel_->setStyleSheet(
         "color: #4ADE80; font-size: 12px; padding: 8px 12px; "
         "background: #0A0A0A; border: 1px solid #166534; border-radius: 4px;");

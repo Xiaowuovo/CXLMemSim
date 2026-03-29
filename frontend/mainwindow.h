@@ -89,6 +89,10 @@ private:
     cxlsim::CXLSimConfig config_;
     QString currentConfigFile_;
     bool simulationRunning_;
+    
+    // 历史数据收集（用于导出）
+    std::vector<cxlsim::EpochStats> epochHistory_;
+    static const size_t MAX_HISTORY_SIZE = 100000; // 最多保存10万个epoch
 };
 
 #endif // MAINWINDOW_H

@@ -10,6 +10,7 @@
 #include "widgets/experiment_panel_widget.h"
 #include "widgets/workload_config_widget.h"
 #include "widgets/sidebar_widget.h"
+#include "widgets/export_dialog.h"
 #include "tracer/mock_tracer.h"
 #include <QStackedWidget>
 #include <QHBoxLayout>
@@ -27,6 +28,8 @@
 #include <QStringList>
 #include <QJsonObject>
 #include <QJsonDocument>
+#include <QJsonArray>
+#include <QDateTime>
 #include <QFile>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -840,6 +843,14 @@ void MainWindow::updateMetrics() {
     if (!simulationRunning_ || !analyzer_ || !metricsPanel_) return;
     const auto& stats = analyzer_->get_current_stats();
     metricsPanel_->updateStats(stats);
+    
+    // 收集历史数据用于导出
+    epochHistory_.push_back(stats);
+    if (epochHistory_.size() > MAX_HISTORY_SIZE) {
+        // 保持最近的MAX_HISTORY_SIZE个数据
+        epochHistory_.erase(epochHistory_.begin(), 
+                           epochHistory_.begin() + (epochHistory_.size() - MAX_HISTORY_SIZE));
+    }
 
     // 实时推送指标到拓扑节点覆盖层
     if (topologyEditor_) {
@@ -933,48 +944,78 @@ void MainWindow::saveConfig(const QString& filename) {
 }
 
 void MainWindow::onExportData() {
-    QString filename = QFileDialog::getSaveFileName(
-        this, "\u5bfc\u51fa\u5b9e\u9a8c\u6570\u636e", "experiment_data.csv",
-        "CSV \u6587\u4ef6 (*.csv);;JSON \u6587\u4ef6 (*.json);;All Files (*)");
-    if (filename.isEmpty()) return;
-
-    if (expPanel_) {
-        expPanel_->exportResults(filename);
-        updateStatus("\u5b9e\u9a8c\u6570\u636e\u5df2\u5bfc\u51fa: " + filename);
-        if (logView_) logView_->append("[INFO] \u5b9e\u9a8c\u6570\u636e\u5df2\u5bfc\u51fa: " + filename);
+    if (epochHistory_.empty()) {
+        QMessageBox::information(this, "提示", 
+            "暂无历史数据。请先运行模拟并等待数据积累。\n\n"
+            "提示：模拟运行时会自动收集性能指标，最多保存10万个Epoch的数据。");
         return;
     }
 
-    if (!analyzer_) {
-        QMessageBox::information(this, "\u63d0\u793a", "\u6682\u65e0\u5b9e\u9a8c\u6570\u636e\uff0c\u8bf7\u5148\u8fd0\u884c\u5b9e\u9a8c\u6216\u6a21\u62df");
-        return;
-    }
-    const auto& stats = analyzer_->get_current_stats();
-    try {
-        if (filename.endsWith(".csv")) {
-            std::ofstream file(filename.toStdString());
-            file << "\u6307\u6807,\u6570\u503c\n"
-                 << "Epoch\u7f16\u53f7," << stats.epoch_number << "\n"
-                 << "\u603b\u8bbf\u95ee\u6b21\u6570," << stats.total_accesses << "\n"
-                 << "L3\u7f3a\u5931\u6b21\u6570," << stats.l3_misses << "\n"
-                 << "CXL\u8bbf\u95ee\u6b21\u6570," << stats.cxl_accesses << "\n"
-                 << "\u5e73\u5747\u5ef6\u8fdf(ns)," << stats.avg_latency_ns << "\n"
-                 << "\u603b\u6ce8\u5165\u5ef6\u8fdf(ns)," << stats.total_injected_delay_ns << "\n";
-        } else {
-            QJsonObject json;
-            json["epoch_number"]            = static_cast<qint64>(stats.epoch_number);
-            json["total_accesses"]          = static_cast<qint64>(stats.total_accesses);
-            json["l3_misses"]               = static_cast<qint64>(stats.l3_misses);
-            json["cxl_accesses"]            = static_cast<qint64>(stats.cxl_accesses);
-            json["avg_latency_ns"]          = stats.avg_latency_ns;
-            json["total_injected_delay_ns"] = stats.total_injected_delay_ns;
-            QFile f(filename);
-            if (f.open(QIODevice::WriteOnly))
-                f.write(QJsonDocument(json).toJson());
+    // 创建导出对话框
+    ExportDialog dialog(this);
+    
+    // 设置数据
+    dialog.setEpochData(epochHistory_);
+    
+    // 生成配置快照JSON
+    QJsonObject configSnapshot;
+    configSnapshot["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+    configSnapshot["total_epochs"] = static_cast<qint64>(epochHistory_.size());
+    
+    // 拓扑配置
+    if (topologyEditor_) {
+        auto cfg = topologyEditor_->getCurrentConfig();
+        QJsonObject topo;
+        topo["root_complex_id"] = QString::fromStdString(cfg.root_complex.id);
+        topo["cxl_device_count"] = static_cast<int>(cfg.cxl_devices.size());
+        
+        QJsonArray devices;
+        for (const auto& dev : cfg.cxl_devices) {
+            QJsonObject d;
+            d["id"] = QString::fromStdString(dev.id);
+            d["capacity_gb"] = static_cast<int>(dev.capacity_gb);
+            d["bandwidth_gbps"] = dev.bandwidth_gbps;
+            d["base_latency_ns"] = dev.base_latency_ns;
+            devices.append(d);
         }
-        updateStatus("\u6570\u636e\u5df2\u5bfc\u51fa: " + filename);
-        if (logView_) logView_->append("[INFO] \u5bfc\u51fa\u5b8c\u6210: " + filename);
-    } catch (...) {
-        QMessageBox::critical(this, "\u9519\u8bef", "\u5bfc\u51fa\u5931\u8d25");
+        topo["cxl_devices"] = devices;
+        configSnapshot["topology"] = topo;
+    }
+    
+    // 负载配置
+    if (workloadWidget_) {
+        QJsonObject workload;
+        auto wlCfg = workloadWidget_->getWorkloadConfig();
+        workload["mode"] = wlCfg.mode == cxlsim::WorkloadConfig::SYNTHETIC ? "synthetic" : "trace";
+        workload["read_ratio"] = wlCfg.read_ratio;
+        workload["write_ratio"] = wlCfg.write_ratio;
+        workload["access_size_bytes"] = static_cast<int>(wlCfg.access_size_bytes);
+        configSnapshot["workload"] = workload;
+    }
+    
+    // 统计摘要
+    if (!epochHistory_.empty()) {
+        const auto& latest = epochHistory_.back();
+        QJsonObject summary;
+        summary["latest_epoch"] = static_cast<qint64>(latest.epoch_number);
+        summary["avg_latency_ns"] = latest.avg_latency_ns;
+        summary["p95_latency_ns"] = latest.p95_latency_ns;
+        summary["p99_latency_ns"] = latest.p99_latency_ns;
+        summary["total_accesses"] = static_cast<qint64>(latest.total_accesses);
+        summary["cxl_accesses"] = static_cast<qint64>(latest.cxl_accesses);
+        summary["local_dram_accesses"] = static_cast<qint64>(latest.local_dram_accesses);
+        configSnapshot["summary"] = summary;
+    }
+    
+    QJsonDocument doc(configSnapshot);
+    dialog.setConfigData(doc.toJson(QJsonDocument::Indented));
+    
+    // 显示对话框
+    if (dialog.exec() == QDialog::Accepted) {
+        updateStatus("✓ 数据导出完成");
+        if (logView_) {
+            logView_->append(QString("[INFO] 📦 已导出 %1 个Epoch的性能数据")
+                .arg(epochHistory_.size()));
+        }
     }
 }

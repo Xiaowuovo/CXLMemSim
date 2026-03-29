@@ -24,6 +24,7 @@ set(FRONTEND_SOURCES
     widgets/sidebar_widget.cpp
     widgets/benchmark_widget.cpp
     widgets/comparison_widget.cpp
+    widgets/export_dialog.cpp
 )
 
 set(FRONTEND_HEADERS
@@ -38,6 +39,7 @@ set(FRONTEND_HEADERS
     widgets/sidebar_widget.h
     widgets/benchmark_widget.h
     widgets/comparison_widget.h
+    widgets/export_dialog.h
 )
 
 # Create executable
