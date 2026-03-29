@@ -14,9 +14,9 @@
 static QLabel* makeValueLabel(QWidget* parent, const QString& color = "#EDEDED") {
     auto* lbl = new QLabel("0", parent);
     lbl->setStyleSheet(QString(
-        "font-size:13px; font-weight:600; color:%1; "
+        "font-size:11px; font-weight:600; color:%1; "
         "background:transparent; border:none; "
-        "padding:6px 12px; min-width:80px; "
+        "padding:1px 4px; min-width:50px; "
         "font-family: 'JetBrains Mono', 'Consolas', monospace;").arg(color));
     lbl->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     lbl->setWordWrap(false);
@@ -54,15 +54,15 @@ MetricsPanel::~MetricsPanel() {}
 
 void MetricsPanel::setupUI() {
     auto* mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(8, 8, 8, 8);
-    mainLayout->setSpacing(10);
+    mainLayout->setContentsMargins(4, 4, 4, 4);
+    mainLayout->setSpacing(6);
     
     // ── 科研关键指标：带宽和延迟仪表盘（最突出）──
     auto* dashboardFrame = new QFrame(this);
-    dashboardFrame->setStyleSheet("QFrame { background: #0A0A0A; border: 1px solid #222222; border-radius: 6px; padding: 8px; }");
+    dashboardFrame->setStyleSheet("QFrame { background: #0A0A0A; border: 1px solid #222222; border-radius: 6px; padding: 4px; }");
     auto* dashLayout = new QHBoxLayout(dashboardFrame);
-    dashLayout->setSpacing(8);
-    dashLayout->setContentsMargins(4, 4, 4, 4);
+    dashLayout->setSpacing(4);
+    dashLayout->setContentsMargins(2, 2, 2, 2);
     
     // 带宽仪表
     auto* bwBox = new QVBoxLayout();
@@ -169,37 +169,38 @@ QGroupBox* MetricsPanel::createEpochGroup() {
 QGroupBox* MetricsPanel::createAccessGroup() {
     auto* group = new QGroupBox("ACCESS STATISTICS", this);
     group->setStyleSheet(
-        "QGroupBox { color: #888888; font-size: 11px; font-weight: bold; letter-spacing: 1px; border: none; padding-top: 16px; }"
+        "QGroupBox { color: #888888; font-size: 10px; font-weight: bold; letter-spacing: 1px; border: none; padding-top: 10px; }"
         "QGroupBox::title { subcontrol-origin: margin; left: 0px; padding: 0px; }"
     );
     
     auto* groupLayout = new QVBoxLayout(group);
-    groupLayout->setContentsMargins(0, 8, 0, 0);
+    groupLayout->setContentsMargins(0, 2, 0, 0);
     
     auto* frame = new QFrame(group);
     frame->setStyleSheet("QFrame { background: #0A0A0A; border: 1px solid #222222; border-radius: 6px; }");
     auto* frameLayout = new QVBoxLayout(frame);
-    frameLayout->setContentsMargins(16, 16, 16, 16);
-    frameLayout->setSpacing(12);
+    frameLayout->setContentsMargins(6, 6, 6, 6);
+    frameLayout->setSpacing(4);
 
     auto* layout = new QFormLayout();
-    layout->setSpacing(8);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(2);
     layout->setLabelAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     layout->setFormAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
     totalAccesses_ = makeValueLabel(this, "#EDEDED");
     auto* tlbl = new QLabel("Total Acc", this);
-    tlbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
+    tlbl->setStyleSheet("color: #888888; font-size: 10px; background: transparent; border: none; padding: 1px 0;");
     layout->addRow(tlbl, totalAccesses_);
 
     l3Misses_ = makeValueLabel(this, "#F87171");
     auto* l3lbl = new QLabel("L3 Misses", this);
-    l3lbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
+    l3lbl->setStyleSheet("color: #888888; font-size: 10px; background: transparent; border: none; padding: 1px 0;");
     layout->addRow(l3lbl, l3Misses_);
 
     cxlAccesses_ = makeValueLabel(this, "#60A5FA");
     auto* cxllbl = new QLabel("CXL Acc", this);
-    cxllbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
+    cxllbl->setStyleSheet("color: #888888; font-size: 10px; background: transparent; border: none; padding: 1px 0;");
     layout->addRow(cxllbl, cxlAccesses_);
     
     frameLayout->addLayout(layout);
@@ -207,33 +208,35 @@ QGroupBox* MetricsPanel::createAccessGroup() {
     // ── CXL科研关键：内存层次化比例 ──
     auto* sep1 = new QFrame(frame);
     sep1->setFrameShape(QFrame::HLine);
-    sep1->setStyleSheet("border: none; background: #222222; max-height: 1px;");
+    sep1->setStyleSheet("border: none; background: #222222; max-height: 1px; margin: 1px 0;");
     frameLayout->addWidget(sep1);
 
     auto* tieringLayout = new QHBoxLayout();
+    tieringLayout->setContentsMargins(0, 0, 0, 0);
     auto* tieringLbl = new QLabel("DRAM vs CXL", this);
-    tieringLbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
+    tieringLbl->setStyleSheet("color: #888888; font-size: 10px; background: transparent; border: none; padding: 1px 0;");
     tieringLayout->addWidget(tieringLbl);
     
     tieringRatio_ = new QLabel("0:0", this);
-    tieringRatio_->setStyleSheet("color: #10B981; font-size: 11px; font-weight: 600; background: transparent;");
+    tieringRatio_->setStyleSheet("color: #10B981; font-size: 10px; font-weight: 600; background: transparent; padding: 1px 0;");
     tieringLayout->addWidget(tieringRatio_, 0, Qt::AlignRight);
     frameLayout->addLayout(tieringLayout);
 
     // ── 链路利用率进度条 ──
     auto* linkLayout = new QHBoxLayout();
+    linkLayout->setContentsMargins(0, 0, 0, 0);
     auto* linkLbl = new QLabel("Link Util", this);
-    linkLbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
+    linkLbl->setStyleSheet("color: #888888; font-size: 10px; background: transparent; border: none; padding: 1px 0;");
     linkLayout->addWidget(linkLbl);
     
     linkUtilBar_ = new QProgressBar(this);
     linkUtilBar_->setRange(0, 100);
     linkUtilBar_->setValue(0);
     linkUtilBar_->setTextVisible(false);
-    linkUtilBar_->setFixedHeight(6);
+    linkUtilBar_->setFixedHeight(4);
     linkUtilBar_->setStyleSheet(
-        "QProgressBar { background: #111111; border: none; border-radius: 3px; }"
-        "QProgressBar::chunk { background: #10B981; border-radius: 3px; }"
+        "QProgressBar { background: #111111; border: none; border-radius: 2px; }"
+        "QProgressBar::chunk { background: #10B981; border-radius: 2px; }"
     );
     linkLayout->addWidget(linkUtilBar_, 1, Qt::AlignVCenter);
     
@@ -242,22 +245,23 @@ QGroupBox* MetricsPanel::createAccessGroup() {
     // ── L3 Miss Rate 进度条 ──
     auto* line = new QFrame(frame);
     line->setFrameShape(QFrame::HLine);
-    line->setStyleSheet("border: none; background: #222222; max-height: 1px;");
+    line->setStyleSheet("border: none; background: #222222; max-height: 1px; margin: 1px 0;");
     frameLayout->addWidget(line);
 
     auto* rateLayout = new QHBoxLayout();
+    rateLayout->setContentsMargins(0, 0, 0, 0);
     auto* rateLbl = new QLabel("L3 Miss %", this);
-    rateLbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
+    rateLbl->setStyleSheet("color: #888888; font-size: 10px; background: transparent; border: none; padding: 1px 0;");
     rateLayout->addWidget(rateLbl);
     
     missRate_ = new QProgressBar(this);
     missRate_->setRange(0, 100);
     missRate_->setValue(0);
     missRate_->setTextVisible(false);
-    missRate_->setFixedHeight(6);
+    missRate_->setFixedHeight(4);
     missRate_->setStyleSheet(
-        "QProgressBar { background: #111111; border: none; border-radius: 3px; }"
-        "QProgressBar::chunk { background: #F87171; border-radius: 3px; }"
+        "QProgressBar { background: #111111; border: none; border-radius: 2px; }"
+        "QProgressBar::chunk { background: #F87171; border-radius: 2px; }"
     );
     rateLayout->addWidget(missRate_, 1, Qt::AlignVCenter);
     
@@ -271,46 +275,46 @@ QGroupBox* MetricsPanel::createAccessGroup() {
 QGroupBox* MetricsPanel::createLatencyGroup() {
     auto* group = new QGroupBox("LATENCY METRICS", this);
     group->setStyleSheet(
-        "QGroupBox { color: #888888; font-size: 11px; font-weight: bold; letter-spacing: 1px; border: none; padding-top: 16px; }"
+        "QGroupBox { color: #888888; font-size: 10px; font-weight: bold; letter-spacing: 1px; border: none; padding-top: 10px; }"
         "QGroupBox::title { subcontrol-origin: margin; left: 0px; padding: 0px; }"
     );
     
     auto* frame = new QFrame(group);
     frame->setStyleSheet("QFrame { background: #0A0A0A; border: 1px solid #222222; border-radius: 6px; }");
     auto* layout = new QFormLayout(frame);
-    layout->setContentsMargins(12, 12, 12, 12);
-    layout->setSpacing(8);
+    layout->setContentsMargins(6, 6, 6, 6);
+    layout->setSpacing(2);
     layout->setLabelAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     layout->setFormAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
     avgLatency_ = makeValueLabel(this, "#FBBF24");
     auto* albl = new QLabel("Avg Latency", this);
-    albl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
+    albl->setStyleSheet("color: #888888; font-size: 10px; background: transparent; border: none; padding: 1px 0;");
     layout->addRow(albl, avgLatency_);
 
     // ── CXL科研关键指标：尾延迟 ──
     p95Latency_ = makeValueLabel(this, "#F97316"); // Orange
     auto* p95lbl = new QLabel("P95 Latency", this);
-    p95lbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
+    p95lbl->setStyleSheet("color: #888888; font-size: 10px; background: transparent; border: none; padding: 1px 0;");
     layout->addRow(p95lbl, p95Latency_);
 
     p99Latency_ = makeValueLabel(this, "#EF4444"); // Red
     auto* p99lbl = new QLabel("P99 Latency", this);
-    p99lbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
+    p99lbl->setStyleSheet("color: #888888; font-size: 10px; background: transparent; border: none; padding: 1px 0;");
     layout->addRow(p99lbl, p99Latency_);
 
     queuingDelay_ = makeValueLabel(this, "#8B5CF6"); // Purple
     auto* qlbl = new QLabel("Queuing Delay", this);
-    qlbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
+    qlbl->setStyleSheet("color: #888888; font-size: 10px; background: transparent; border: none; padding: 1px 0;");
     layout->addRow(qlbl, queuingDelay_);
 
     totalDelay_ = makeValueLabel(this, "#A1A1AA");
     auto* tdlbl = new QLabel("Total Delay", this);
-    tdlbl->setStyleSheet("color: #888888; font-size: 11px; background: transparent; border: none;");
+    tdlbl->setStyleSheet("color: #888888; font-size: 10px; background: transparent; border: none; padding: 1px 0;");
     layout->addRow(tdlbl, totalDelay_);
 
     auto* groupLayout = new QVBoxLayout(group);
-    groupLayout->setContentsMargins(0, 8, 0, 0);
+    groupLayout->setContentsMargins(0, 2, 0, 0);
     groupLayout->addWidget(frame);
 
     return group;
@@ -319,16 +323,16 @@ QGroupBox* MetricsPanel::createLatencyGroup() {
 QGroupBox* MetricsPanel::createChartGroup() {
     auto* group = new QGroupBox("REALTIME TRENDS", this);
     group->setStyleSheet(
-        "QGroupBox { color: #888888; font-size: 11px; font-weight: bold; letter-spacing: 1px; border: none; padding-top: 16px; }"
+        "QGroupBox { color: #888888; font-size: 10px; font-weight: bold; letter-spacing: 1px; border: none; padding-top: 10px; }"
         "QGroupBox::title { subcontrol-origin: margin; left: 0px; padding: 0px; }"
     );
     auto* layout = new QVBoxLayout(group);
-    layout->setContentsMargins(0, 8, 0, 0);
+    layout->setContentsMargins(0, 2, 0, 0);
 
     chartTabs_ = new QTabWidget(this);
     chartTabs_->setStyleSheet(
         "QTabWidget::pane { border: 1px solid #222222; border-radius: 6px; background: #0A0A0A; top: -1px; }"
-        "QTabBar::tab { background: transparent; color: #888888; padding: 6px 12px; border: 1px solid transparent; font-size: 11px; }"
+        "QTabBar::tab { background: transparent; color: #888888; padding: 4px 8px; border: 1px solid transparent; font-size: 10px; }"
         "QTabBar::tab:selected { color: #EDEDED; border-bottom: 2px solid #EDEDED; }"
     );
 
