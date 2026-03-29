@@ -34,6 +34,8 @@ public:
 signals:
     void workloadChanged();
     void validationStatusChanged(bool valid);
+    void applyWorkloadRequested();
+    void cancelWorkloadRequested();
 
 private slots:
     void onModeChanged();

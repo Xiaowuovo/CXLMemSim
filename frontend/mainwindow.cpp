@@ -10,6 +10,7 @@
 #include "widgets/experiment_panel_widget.h"
 #include "widgets/workload_config_widget.h"
 #include "widgets/sidebar_widget.h"
+#include "tracer/mock_tracer.h"
 #include <QStackedWidget>
 #include <QHBoxLayout>
 #include <QWidget>
@@ -544,6 +545,51 @@ void MainWindow::createConnections() {
                 this, &MainWindow::onResetSimulation);
     }
 
+    // ── 负载配置应用/取消 ──
+    if (workloadWidget_) {
+        connect(workloadWidget_, &WorkloadConfigWidget::applyWorkloadRequested, this, [this]() {
+            if (!workloadWidget_->isWorkloadValid()) {
+                QMessageBox::warning(this, "负载配置无效", 
+                    workloadWidget_->getValidationError());
+                if (logView_) logView_->append("[WARN] 负载应用失败：配置无效");
+                return;
+            }
+            
+            // 同步负载配置到主配置
+            config_.workload = workloadWidget_->getWorkloadConfig();
+            
+            // 更新配置树显示
+            if (configTree_) {
+                configTree_->setConfig(config_);
+            }
+            
+            updateStatus("✓ 负载配置已应用");
+            if (logView_) {
+                if (config_.workload.trace_driven) {
+                    logView_->append(QString("[INFO] ✓ 负载已应用: Trace-Driven (%1)")
+                        .arg(QString::fromStdString(config_.workload.trace_file_path)));
+                } else {
+                    logView_->append(QString("[INFO] ✓ 负载已应用: Synthetic (%.1f GB/s, %2 模式)")
+                        .arg(config_.workload.injection_rate_gbps)
+                        .arg(config_.workload.access_pattern == cxlsim::AccessPattern::RANDOM ? "Random" : "Sequential"));
+                }
+            }
+        });
+        
+        connect(workloadWidget_, &WorkloadConfigWidget::cancelWorkloadRequested, this, [this]() {
+            // 清空负载配置
+            config_.workload = cxlsim::WorkloadConfig();
+            
+            // 重置UI
+            if (workloadWidget_) {
+                workloadWidget_->setWorkloadConfig(config_.workload);
+            }
+            
+            updateStatus("负载配置已清除");
+            if (logView_) logView_->append("[INFO] 负载配置已重置");
+        });
+    }
+    
     // ── 实验面板日志转发 ──
     if (expPanel_ && logView_) {
         connect(expPanel_, &ExperimentPanelWidget::logMessage,
@@ -678,6 +724,15 @@ void MainWindow::onStartSimulation() {
             analyzer_.reset();
             return;
         }
+        
+        // 创建并配置MockTracer（用于模拟内存访问事件）
+        auto tracer = std::make_shared<cxlsim::MockTracer>();
+        tracer->set_simulation_params(0.05, 100); // 5% L3 miss rate, 100ns latency
+        tracer->set_address_range(0x1000000, 0x10000000);
+        tracer->initialize(0); // pid不重要，MockTracer不使用
+        analyzer_->set_tracer(tracer);
+        
+        if (logView_) logView_->append("[INFO] ✓ MockTracer 已配置");
     }
 
     // 启动分析器后台线程

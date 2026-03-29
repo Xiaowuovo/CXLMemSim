@@ -14,12 +14,13 @@
 static QLabel* makeValueLabel(QWidget* parent, const QString& color = "#EDEDED") {
     auto* lbl = new QLabel("0", parent);
     lbl->setStyleSheet(QString(
-        "font-size:13px; font-weight:600; color:%1; "
+        "font-size:12px; font-weight:600; color:%1; "
         "background:transparent; border:none; "
-        "padding:2px 4px; min-width:60px; max-width:100px; "
+        "padding:2px 4px; min-width:70px; max-width:150px; "
         "font-family: 'JetBrains Mono', 'Consolas', monospace;").arg(color));
     lbl->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     lbl->setWordWrap(false);
+    lbl->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     return lbl;
 }
 
