@@ -178,7 +178,6 @@ private:
     QToolBar* toolbar_;
     ZoomableGraphicsView* view_;
     QGraphicsScene* scene_;
-    QLabel* zoomLabel_;
 
     QMap<QString, ComponentItem*> components_;
     QList<LinkItem*> links_;
@@ -188,6 +187,7 @@ private:
     QGraphicsLineItem* connectionPreview_;
     int deviceCounter_;
     int switchCounter_;
+    QLabel* zoomLabel_;
 };
 
 #endif // TOPOLOGY_EDITOR_WIDGET_H

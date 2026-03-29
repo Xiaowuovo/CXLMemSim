@@ -345,8 +345,6 @@ void MainWindow::setupMenuBar() {
     stopAction->setShortcut(Qt::Key_F6);
     
     simMenu->addAction("\u91cd\u7f6e\u6a21\u62df(&R)", this, &MainWindow::onResetSimulation);
-    simMenu->addSeparator();
-    simMenu->addAction("\u8fd0\u884c\u9884\u8bbe\u5b9e\u9a8c(&E)...", this, &MainWindow::onRunExperiments);
 
     QMenu* viewMenu = menuBar()->addMenu("\u89c6\u56fe(&V)");
     viewMenu->addAction("\u62d3\u6251\u7f16\u8f91", this, [this]() { if(sidebar_) sidebar_->setActivePage(SidebarWidget::TOPOLOGY); });
