@@ -22,6 +22,7 @@ class ConfigTreeWidget;
 class MetricsPanel;
 class ExperimentPanelWidget;
 class WorkloadConfigWidget;
+class BenchmarkPageWidget;
 class SidebarWidget;
 class QStackedWidget;
 
@@ -74,6 +75,7 @@ private:
     TopologyEditorWidget* topologyEditor_;
     ConfigTreeWidget* configTree_;
     WorkloadConfigWidget* workloadWidget_;
+    BenchmarkPageWidget* benchmarkPage_;
     ExperimentPanelWidget* expPanel_;
     MetricsPanel* metricsPanel_;
     QTextEdit* logView_;

@@ -58,39 +58,18 @@ void SidebarWidget::setupUI() {
     mainLayout_->addWidget(cfgBtn);
     mainLayout_->addWidget(wlBtn);
     
+    // 基准测试页面按钮
+    auto* benchBtn = createIconButton("📌", "基准测试\nBenchmark", BENCHMARK);
+    buttonGroup_->addButton(benchBtn, BENCHMARK);
+    mainLayout_->addWidget(benchBtn);
+    
     // ══════════════════════════════════════════════════════════
-    // 功能按钮组（快捷操作）
+    // 功能按钮组（快捷操作）- 导出数据
     // ══════════════════════════════════════════════════════════
     auto* divider1 = new QFrame(this);
     divider1->setFrameShape(QFrame::HLine);
     divider1->setStyleSheet("background: #1A1A1A; max-height: 1px; margin: 8px 8px;");
     mainLayout_->addWidget(divider1);
-    
-    auto* pinBtn = new QPushButton("📌", this);
-    pinBtn->setToolTip("固定基准\nPin Baseline");
-    pinBtn->setFixedSize(48, 44);
-    pinBtn->setCursor(Qt::PointingHandCursor);
-    pinBtn->setStyleSheet(
-        "QPushButton {"
-        "    background: transparent;"
-        "    border: none;"
-        "    border-left: 2px solid transparent;"
-        "    border-radius: 6px;"
-        "    color: #666666;"
-        "    font-size: 22px;"
-        "    font-weight: 300;"
-        "    padding: 0;"
-        "    margin: 2px 0;"
-        "}"
-        "QPushButton:hover {"
-        "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, "
-        "        stop:0 rgba(79, 195, 247, 0.08), "
-        "        stop:1 rgba(79, 195, 247, 0.02));"
-        "    color: #EDEDED;"
-        "    border-left-color: #4FC3F7;"
-        "}");
-    connect(pinBtn, &QPushButton::clicked, this, &SidebarWidget::pinBaselineRequested);
-    mainLayout_->addWidget(pinBtn);
     
     auto* exportBtn = new QPushButton("📊", this);
     exportBtn->setToolTip("导出数据\nExport Data");
@@ -114,6 +93,19 @@ void SidebarWidget::setupUI() {
         "        stop:1 rgba(79, 195, 247, 0.02));"
         "    color: #EDEDED;"
         "    border-left-color: #4FC3F7;"
+        "}"
+        "QPushButton:checked {"
+        "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, "
+        "        stop:0 rgba(79, 195, 247, 0.15), "
+        "        stop:1 rgba(79, 195, 247, 0.05));"
+        "    border-left: 2px solid #4FC3F7;"
+        "    color: #4FC3F7;"
+        "    font-weight: 500;"
+        "}"
+        "QPushButton:checked:hover {"
+        "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, "
+        "        stop:0 rgba(79, 195, 247, 0.20), "
+        "        stop:1 rgba(79, 195, 247, 0.08));"
         "}");
     connect(exportBtn, &QPushButton::clicked, this, &SidebarWidget::exportDataRequested);
     mainLayout_->addWidget(exportBtn);

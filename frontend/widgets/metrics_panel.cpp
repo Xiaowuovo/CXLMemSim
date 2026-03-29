@@ -46,8 +46,6 @@ MetricsPanel::MetricsPanel(QWidget *parent)
     , bandwidthChart_(nullptr)
     , chartTabs_(nullptr)
     , missRateChart_(nullptr)
-    , benchmarkWidget_(nullptr)
-    , comparisonWidget_(nullptr)
 {
     setupUI();
 }
@@ -129,12 +127,12 @@ void MetricsPanel::setupUI() {
     mainLayout->addWidget(epochFrame);
     
     // ══════════════════════════════════════════════════════════
-    // 两列布局：左列统计数据，右列对比和图表
+    // 两列布局：左列统计数据，右列图表
     // ══════════════════════════════════════════════════════════
     auto* twoColumnLayout = new QHBoxLayout();
     twoColumnLayout->setSpacing(10);
     
-    // ── 左列：统计数据和基准测试 ──
+    // ── 左列：统计数据 ──
     auto* leftColumn = new QWidget(this);
     auto* leftLayout = new QVBoxLayout(leftColumn);
     leftLayout->setContentsMargins(0, 0, 0, 0);
@@ -142,30 +140,16 @@ void MetricsPanel::setupUI() {
     
     leftLayout->addWidget(createAccessGroup());
     leftLayout->addWidget(createLatencyGroup());
-    
-    // 基准测试配置区
-    benchmarkWidget_ = new BenchmarkWidget(this);
-    connect(benchmarkWidget_, &BenchmarkWidget::baselineFixed,
-            this, &MetricsPanel::onBaselineFixed);
-    connect(benchmarkWidget_, &BenchmarkWidget::baselineCleared,
-            this, &MetricsPanel::onBaselineCleared);
-    leftLayout->addWidget(benchmarkWidget_);
     leftLayout->addStretch();
     
     twoColumnLayout->addWidget(leftColumn, 1);
     
-    // ── 右列：对比视图和图表 ──
+    // ── 右列：实时趋势图表 ──
     auto* rightColumn = new QWidget(this);
     auto* rightLayout = new QVBoxLayout(rightColumn);
     rightLayout->setContentsMargins(0, 0, 0, 0);
     rightLayout->setSpacing(10);
     
-    // 性能对比视图
-    comparisonWidget_ = new ComparisonWidget(this);
-    comparisonWidget_->setMinimumHeight(280);
-    rightLayout->addWidget(comparisonWidget_);
-    
-    // 实时趋势图表
     rightLayout->addWidget(createChartGroup());
     rightLayout->addStretch();
     
@@ -450,55 +434,7 @@ void MetricsPanel::updateStats(const cxlsim::EpochStats& stats) {
 
     latencyChart_->addDataPoint(stats.avg_latency_ns);
     missRateChart_->addDataPoint(missRatePct);
-    bandwidthChart_->addDataPoint(bw);  // 复用前面计算的带宽值
-    
-    // 如果有基准，更新对比视图
-    if (benchmarkWidget_ && benchmarkWidget_->hasBaseline() && comparisonWidget_) {
-        BenchmarkWidget::BenchmarkStats current;
-        current.avg_latency_ns = stats.avg_latency_ns;
-        current.p95_latency_ns = stats.p95_latency_ns;
-        current.p99_latency_ns = stats.p99_latency_ns;
-        current.bandwidth_gbps = bw;
-        current.link_utilization_pct = stats.link_utilization_pct;
-        current.total_accesses = stats.total_accesses;
-        current.cxl_accesses = stats.cxl_accesses;
-        current.local_accesses = stats.local_dram_accesses;
-        
-        comparisonWidget_->updateComparison(current, benchmarkWidget_->getCurrentBaseline());
-    }
-}
-
-void MetricsPanel::onBaselineFixed(const BenchmarkWidget::BenchmarkStats& stats) {
-    // 固定图表基准线（幽灵折线）
-    if (latencyChart_) latencyChart_->pinCurrentAsBaseline("Baseline");
-    if (bandwidthChart_) bandwidthChart_->pinCurrentAsBaseline("Baseline");
-    if (missRateChart_) missRateChart_->pinCurrentAsBaseline("Baseline");
-    
-    // 初始化对比视图
-    if (comparisonWidget_) {
-        BenchmarkWidget::BenchmarkStats current;
-        current.avg_latency_ns = currentStats_.avg_latency_ns;
-        current.p95_latency_ns = currentStats_.p95_latency_ns;
-        current.p99_latency_ns = currentStats_.p99_latency_ns;
-        double bw = (currentStats_.total_accesses * 64.0) / 0.01 / 1e9;
-        current.bandwidth_gbps = bw;
-        current.link_utilization_pct = currentStats_.link_utilization_pct;
-        current.total_accesses = currentStats_.total_accesses;
-        current.cxl_accesses = currentStats_.cxl_accesses;
-        current.local_accesses = currentStats_.local_dram_accesses;
-        
-        comparisonWidget_->updateComparison(current, stats);
-    }
-}
-
-void MetricsPanel::onBaselineCleared() {
-    // 清除图表基准线
-    clearBaseline();
-    
-    // 清除对比视图
-    if (comparisonWidget_) {
-        comparisonWidget_->clear();
-    }
+    bandwidthChart_->addDataPoint(bw);
 }
 
 void MetricsPanel::reset() {

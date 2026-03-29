@@ -18,6 +18,7 @@ public:
         TOPOLOGY = 0,    // 拓扑编辑
         CONFIG,          // 配置树
         WORKLOAD,        // 负载配置
+        BENCHMARK,       // 基准测试
         EXPERIMENT,      // 实验管理
         METRICS,         // 性能指标
         LOG              // 运行日志

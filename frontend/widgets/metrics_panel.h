@@ -14,8 +14,6 @@
 #include <QTabWidget>
 #include "analyzer/timing_analyzer.h"
 #include "realtime_chart_widget.h"
-#include "benchmark_widget.h"
-#include "comparison_widget.h"
 
 /**
  * @brief Panel displaying real-time performance metrics
@@ -26,19 +24,12 @@ class MetricsPanel : public QWidget {
 public:
     explicit MetricsPanel(QWidget *parent = nullptr);
     ~MetricsPanel();
-    
-    BenchmarkWidget* benchmarkWidget() const { return benchmarkWidget_; }
-    ComparisonWidget* comparisonWidget() const { return comparisonWidget_; }
 
 public slots:
     void updateStats(const cxlsim::EpochStats& stats);
     void reset();
     void pinCurrentAsBaseline();    ///< 固定当前数据为基准（科研对比）
     void clearBaseline();            ///< 清除基准曲线
-    
-private slots:
-    void onBaselineFixed(const BenchmarkWidget::BenchmarkStats& stats);
-    void onBaselineCleared();
 
 private:
     void setupUI();
@@ -65,11 +56,7 @@ private:
     QTabWidget* chartTabs_;
     RealTimeChartWidget* missRateChart_;
     
-    // Benchmark & Comparison widgets
-    BenchmarkWidget* benchmarkWidget_;
-    ComparisonWidget* comparisonWidget_;
-    
-    // Current stats for comparison
+    // Current stats for baseline
     cxlsim::EpochStats currentStats_;
 
     // Group boxes

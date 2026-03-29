@@ -9,6 +9,7 @@
 #include "widgets/metrics_panel.h"
 #include "widgets/experiment_panel_widget.h"
 #include "widgets/workload_config_widget.h"
+#include "widgets/benchmark_page_widget.h"
 #include "widgets/sidebar_widget.h"
 #include "widgets/export_dialog.h"
 #include "tracer/mock_tracer.h"
@@ -45,6 +46,7 @@ MainWindow::MainWindow(QWidget *parent)
     , topologyEditor_(nullptr)
     , configTree_(nullptr)
     , workloadWidget_(nullptr)
+    , benchmarkPage_(nullptr)
     , expPanel_(nullptr)
     , metricsPanel_(nullptr)
     , logView_(nullptr)
@@ -432,13 +434,25 @@ void MainWindow::setupPages() {
     pageStack_->addWidget(wlScroll);
 
     // ═══════════════════════════════════════════════════════════════
-    // 页面3: 实验管理
+    // 页面3: 基准测试
+    // ═══════════════════════════════════════════════════════════════
+    auto* benchScroll = new QScrollArea(this);
+    benchScroll->setWidgetResizable(true);
+    benchScroll->setFrameShape(QFrame::NoFrame);
+    benchScroll->setStyleSheet("QScrollArea { background: #000000; border: none; }");
+    
+    benchmarkPage_ = new BenchmarkPageWidget(benchScroll);
+    benchScroll->setWidget(benchmarkPage_);
+    pageStack_->addWidget(benchScroll);
+
+    // ═══════════════════════════════════════════════════════════════
+    // 页面4: 实验管理
     // ═══════════════════════════════════════════════════════════════
     expPanel_ = new ExperimentPanelWidget(this);
     pageStack_->addWidget(expPanel_);
 
     // ═══════════════════════════════════════════════════════════════
-    // 页面4: 性能指标（独立全屏视图）
+    // 页面5: 性能指标（独立全屏视图）
     // ═══════════════════════════════════════════════════════════════
     auto* metricsFullPage = new QWidget(this);
     auto* metricsFullLayout = new QVBoxLayout(metricsFullPage);
@@ -843,6 +857,11 @@ void MainWindow::updateMetrics() {
     if (!simulationRunning_ || !analyzer_ || !metricsPanel_) return;
     const auto& stats = analyzer_->get_current_stats();
     metricsPanel_->updateStats(stats);
+    
+    // 更新基准测试页面
+    if (benchmarkPage_) {
+        benchmarkPage_->updateCurrentStats(stats);
+    }
     
     // 收集历史数据用于导出
     epochHistory_.push_back(stats);

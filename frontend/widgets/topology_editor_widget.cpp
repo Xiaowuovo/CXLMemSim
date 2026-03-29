@@ -250,10 +250,6 @@ void TopologyEditorWidget::setupToolBar() {
     connect(resetBtn, &QToolButton::clicked, this, &TopologyEditorWidget::resetSimulationRequested);
     toolbar_->addWidget(resetBtn);
 
-    auto* infoLabel = new QLabel("  💡 点击'连接模式'后，依次点击两个节点即可连接  ", toolbar_);
-    infoLabel->setStyleSheet("color: #888888; font-size: 12px; font-weight: 500;");
-    toolbar_->addWidget(infoLabel);
-
     qobject_cast<QVBoxLayout*>(layout())->insertWidget(0, toolbar_);
 }
 
