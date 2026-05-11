@@ -243,11 +243,6 @@ std::string TimingAnalyzer::find_device_for_address(uint64_t addr) const {
 }
 
 void TimingAnalyzer::update_bandwidth_stats(const std::vector<MemoryAccessEvent>& samples) {
-    // Sample bandwidth usage based on sample rate
-    if (static_cast<double>(rand()) / RAND_MAX > config_.bandwidth_sample_rate) {
-        return;
-    }
-
     // Reset all link loads
     topology_.reset_link_loads();
 

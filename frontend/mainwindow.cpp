@@ -348,22 +348,6 @@ void MainWindow::setupMenuBar() {
     startAction->setShortcut(Qt::Key_F5);
     
     QAction* stopAction = simMenu->addAction("\u505c\u6b62\u6a21\u62df [F6]", this, &MainWindow::onStopSimulation);
-    stopAction->setShortcut(Qt::Key_F6);
-    
-    simMenu->addAction("\u91cd\u7f6e\u6a21\u62df(&R)", this, &MainWindow::onResetSimulation);
-
-    QMenu* viewMenu = menuBar()->addMenu("\u89c6\u56fe(&V)");
-    viewMenu->addAction("\u62d3\u6251\u7f16\u8f91", this, [this]() { if(sidebar_) sidebar_->setActivePage(SidebarWidget::TOPOLOGY); });
-    viewMenu->addAction("\u7cfb\u7edf\u914d\u7f6e", this, [this]() { if(sidebar_) sidebar_->setActivePage(SidebarWidget::CONFIG); });
-    viewMenu->addAction("\u8d1f\u8f7d\u914d\u7f6e", this, [this]() { if(sidebar_) sidebar_->setActivePage(SidebarWidget::WORKLOAD); });
-    viewMenu->addAction("\u5b9e\u9a8c\u7ba1\u7406", this, [this]() { if(sidebar_) sidebar_->setActivePage(SidebarWidget::EXPERIMENT); });
-    viewMenu->addAction("\u6027\u80fd\u6307\u6807", this, [this]() { if(sidebar_) sidebar_->setActivePage(SidebarWidget::METRICS); });
-    viewMenu->addAction("\u8fd0\u884c\u65e5\u5fd7", this, [this]() { if(sidebar_) sidebar_->setActivePage(SidebarWidget::LOG); });
-
-    QMenu* helpMenu = menuBar()->addMenu("\u5e2e\u52a9(&H)");
-    helpMenu->addAction("\u4f7f\u7528\u6587\u6863(&D)", this, &MainWindow::onShowDocs);
-    helpMenu->addAction("\u5173\u4e8e(&A)", this, &MainWindow::onAbout);
-}
 
 // 工具栏已删除，功能迁移到侧边栏和拓扑页面
 
@@ -452,23 +436,6 @@ void MainWindow::setupPages() {
     pageStack_->addWidget(expPanel_);
 
     // ═══════════════════════════════════════════════════════════════
-    // 页面5: 性能指标（独立全屏视图）
-    // ═══════════════════════════════════════════════════════════════
-    auto* metricsFullPage = new QWidget(this);
-    auto* metricsFullLayout = new QVBoxLayout(metricsFullPage);
-    metricsFullLayout->setContentsMargins(24, 24, 24, 24);
-    
-    auto* metricsTitle = new QLabel("📊 性能监控面板", metricsFullPage);
-    metricsTitle->setStyleSheet("font-size: 18px; font-weight: bold; color: #EDEDED; margin-bottom: 12px;");
-    metricsFullLayout->addWidget(metricsTitle);
-    
-    // 这里可以添加更详细的性能监控组件，暂时显示提示
-    auto* hint = new QLabel("实时性能数据已集成在拓扑编辑页面右侧。\n切换到拓扑页面查看实时指标。", metricsFullPage);
-    hint->setStyleSheet("color: #888888; font-size: 13px; padding: 24px;");
-    hint->setAlignment(Qt::AlignCenter);
-    metricsFullLayout->addWidget(hint, 1);
-    pageStack_->addWidget(metricsFullPage);
-
     // ═══════════════════════════════════════════════════════════════
     // 页面5: 运行日志
     // ═══════════════════════════════════════════════════════════════
@@ -499,7 +466,7 @@ void MainWindow::onPageChanged(int pageIndex) {
         pageStack_->setCurrentIndex(pageIndex);
         
         // 更新状态栏提示
-        QStringList pageNames = {"拓扑编辑", "系统配置", "负载配置", "实验管理", "性能指标", "运行日志"};
+        QStringList pageNames = {"拓扑编辑", "系统配置", "负载配置", "基准测试", "实验管理", "运行日志"};
         if (pageIndex >= 0 && pageIndex < pageNames.size()) {
             updateStatus(QString("当前页面: %1").arg(pageNames[pageIndex]));
         }

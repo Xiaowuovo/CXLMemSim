@@ -128,15 +128,12 @@ void SidebarWidget::setupUI() {
     mainLayout_->addWidget(analysisLabel);
     
     auto* expBtn = createIconButton("◈", "实验管理\nExperiments", EXPERIMENT);
-    auto* metBtn = createIconButton("◐", "性能监控\nMetrics", METRICS);
     auto* logBtn = createIconButton("◫", "运行日志\nLogs", LOG);
     
     buttonGroup_->addButton(expBtn, EXPERIMENT);
-    buttonGroup_->addButton(metBtn, METRICS);
     buttonGroup_->addButton(logBtn, LOG);
     
     mainLayout_->addWidget(expBtn);
-    mainLayout_->addWidget(metBtn);
     mainLayout_->addWidget(logBtn);
     
     mainLayout_->addStretch();
@@ -200,5 +197,6 @@ void SidebarWidget::setActivePage(PageType page) {
         if (btn) {
             btn->setChecked(true);
         }
+        emit pageChanged(static_cast<int>(page));
     }
 }

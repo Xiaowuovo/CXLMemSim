@@ -42,3 +42,8 @@ user_settings.ini
 # OS
 .DS_Store
 Thumbs.db
+
+# 毕设代码打包（本地提交用，不入库）
+打包毕设代码.ps1
+_毕设打包临时目录/
+*-本科毕业设计代码.zip

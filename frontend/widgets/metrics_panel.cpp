@@ -366,8 +366,8 @@ void MetricsPanel::updateStats(const cxlsim::EpochStats& stats) {
 
     // ── 科研关键：实时带宽和延迟仪表盘 ──
     double bw = 0.0;
-    if (stats.total_accesses > 0)
-        bw = (stats.total_accesses * 64.0) / 0.01 / 1e9;  // GB/s
+    if (stats.cxl_accesses > 0)
+        bw = (stats.cxl_accesses * 64.0) / 0.01 / 1e9;  // GB/s (cxl_accesses * 64B / 10ms epoch)
     bandwidthDisplay_->setText(QString::number(bw, 'f', 2));
     
     latencyDisplay_->setText(QString::number(stats.avg_latency_ns, 'f', 1));

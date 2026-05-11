@@ -31,11 +31,14 @@ void RealTimeChartWidget::addDataPoint(double value) {
     }
 
     // Update max value for auto-scaling (with some decay)
-    if (value > maxValue_) {
-        maxValue_ = value * 1.2; // Add 20% headroom
-    } else {
-        // Slowly decay max value if current values are low
-        maxValue_ = std::max(value * 1.2, maxValue_ * 0.99);
+    // Only update scale when value > 0 to avoid deep-valley artifacts on empty epochs
+    if (value > 0.0) {
+        if (value > maxValue_) {
+            maxValue_ = value * 1.2; // Add 20% headroom
+        } else {
+            // Slowly decay max value if current values are low
+            maxValue_ = std::max(value * 1.2, maxValue_ * 0.99);
+        }
     }
 
     // Ensure minimum scale

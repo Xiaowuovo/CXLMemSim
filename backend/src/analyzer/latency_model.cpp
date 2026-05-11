@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <random>
 
 namespace cxlsim {
 
@@ -70,15 +71,38 @@ double LatencyModel::calculate_access_latency(const MemoryAccessEvent& event,
                                               const std::string& device_id,
                                               const TopologyGraph& topology) const {
     auto breakdown = calculate_latency(device_id, topology);
+    double base = breakdown.total_ns;
+
+    // Per-sample jitter: use address bits + timestamp as seed for reproducible
+    // but varied latency, simulating real hardware timing variation.
+    // Two sources of variance:
+    //   1. Gaussian jitter ~N(0, sigma=12%) models clock/bus timing noise
+    //   2. Write penalty: stores have ~10% higher latency than loads
+    uint64_t seed = (event.virtual_addr >> 6) ^ event.timestamp_ns;
+    std::mt19937_64 rng(seed);
+    std::normal_distribution<double> jitter_dist(0.0, base * 0.12);
+    double jitter = jitter_dist(rng);
+
+    // Write penalty
+    double write_penalty = event.is_load ? 0.0 : base * 0.10;
+
+    // Occasional spike: ~5% of accesses hit extra queuing (tail events)
+    std::uniform_real_distribution<double> spike_dist(0.0, 1.0);
+    double spike = 0.0;
+    if (spike_dist(rng) < 0.05) {
+        std::exponential_distribution<double> exp_dist(1.0 / (base * 0.5));
+        spike = exp_dist(rng);
+    }
+
+    double total = base + jitter + write_penalty + spike;
+    if (total < base * 0.5) total = base * 0.5;  // floor at 50% of base
 
     // Apply MLP optimization if enabled
     if (params_.enable_mlp) {
-        // For now, assume MLP degree of 1 (no parallelism)
-        // This should be enhanced with actual MLP detection from LBR data
-        return apply_mlp_optimization(breakdown.total_ns, 1);
+        return apply_mlp_optimization(total, 1);
     }
 
-    return breakdown.total_ns;
+    return total;
 }
 
 double LatencyModel::apply_mlp_optimization(double base_latency, int mlp_degree) const {
