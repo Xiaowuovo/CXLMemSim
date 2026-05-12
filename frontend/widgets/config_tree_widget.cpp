@@ -260,11 +260,13 @@ void ConfigTreeWidget::addSwitchesItem() {
         auto* swItem = new QTreeWidgetItem(swRoot);
         swItem->setText(0, QString("  \u25cf %1").arg(QString::fromStdString(sw.id)));
         swItem->setForeground(0, QColor(0x81, 0xC7, 0x84));
+        swItem->setFlags(Qt::ItemIsEnabled);
         makeRow(swItem, "    \u7aef\u53e3\u6570", QString::number(sw.num_ports));
         makeCombo(swItem, "    \u5ef6\u8fdf (ns)",
                   {"15", "20", "30", "40", "60"},
                   QString::number(static_cast<int>(sw.latency_ns)),
                   QString("sw_latency_%1").arg(QString::fromStdString(sw.id)));
+        swItem->setExpanded(true);
     }
 }
 
@@ -273,33 +275,63 @@ void ConfigTreeWidget::addDevicesItem() {
         QString("\u25b6 CXL \u5185\u5b58\u8bbe\u5907 (%1\u4e2a)").arg(config_.cxl_devices.size()));
     devRoot->setExpanded(true);
 
-    auto* hintItem = new QTreeWidgetItem(devRoot);
-    hintItem->setText(0, "  \u2139 \u8bbe\u5907\u5c5e\u6027\u5728\u6295\u5c4f\u56fe\u4e2d\u914d\u7f6e");
-    hintItem->setForeground(0, QColor(0x88, 0x88, 0x88));
-    hintItem->setFlags(Qt::ItemIsEnabled);
+    for (int i = 0; i < static_cast<int>(config_.cxl_devices.size()); ++i) {
+        const auto& dev = config_.cxl_devices[i];
+        QString devKey = QString::fromStdString(dev.id);
 
-    for (const auto& dev : config_.cxl_devices) {
         auto* devItem = new QTreeWidgetItem(devRoot);
-        devItem->setText(0, QString("  \u25cf %1").arg(QString::fromStdString(dev.id)));
-        devItem->setText(1, QString::fromStdString(dev.type));
+        devItem->setText(0, QString("  \u25cf %1").arg(devKey));
         devItem->setForeground(0, QColor(0x4F, 0xC3, 0xF7));
-        devItem->setForeground(1, QColor(0x88, 0x88, 0x88));
-        devItem->setToolTip(0, "点击拓扑图中的节点以配置容量、带宽、延迟等属性");
+        devItem->setFlags(Qt::ItemIsEnabled);
+
+        makeCombo(devItem, "    \u7c7b\u578b",
+                  {"Type1", "Type2", "Type3"},
+                  QString::fromStdString(dev.type),
+                  QString("dev_type_%1").arg(devKey));
+        makeCombo(devItem, "    PCIe Gen",
+                  {"Gen4", "Gen5"},
+                  QString::fromStdString(dev.link_gen),
+                  QString("dev_gen_%1").arg(devKey));
+        makeCombo(devItem, "    \u94fe\u8def\u5bbd\u5ea6",
+                  {"x4", "x8", "x16"},
+                  QString::fromStdString(dev.link_width),
+                  QString("dev_width_%1").arg(devKey));
+        makeRow(devItem, "    \u5ef6\u8fdf (ns)",
+                QString::number(dev.base_latency_ns), true);
+
+        devItem->setExpanded(true);
     }
 }
 
 void ConfigTreeWidget::addConnectionsItem() {
-    auto* connRoot = makeCategory(tree_, QString("▶ 拓扑连接 (%1条)").arg(config_.connections.size()));
-    for (const auto& conn : config_.connections) {
+    auto* connRoot = makeCategory(tree_,
+        QString("\u25b6 \u62d3\u6251\u8fde\u63a5 (%1\u6761)").arg(config_.connections.size()));
+    for (int i = 0; i < static_cast<int>(config_.connections.size()); ++i) {
+        const auto& conn = config_.connections[i];
+        QString connKey = QString("%1_to_%2")
+            .arg(QString::fromStdString(conn.from))
+            .arg(QString::fromStdString(conn.to));
+
         auto* connItem = new QTreeWidgetItem(connRoot);
-        connItem->setText(0, QString("  %1 → %2")
+        connItem->setText(0, QString("  %1 \u2192 %2")
             .arg(QString::fromStdString(conn.from))
             .arg(QString::fromStdString(conn.to)));
-        connItem->setText(1, QString::fromStdString(conn.link));
         connItem->setForeground(0, QColor(0x88, 0x88, 0x88));
-        connItem->setForeground(1, QColor(0x60, 0xA5, 0xFA));
-        connItem->setBackground(0, Qt::NoBrush);
-        connItem->setBackground(1, Qt::NoBrush);
+        connItem->setFlags(Qt::ItemIsEnabled);
+
+        QString linkStr  = QString::fromStdString(conn.link);
+        QString curGen   = linkStr.contains("4") ? "Gen4" : "Gen5";
+        QString curWidth = linkStr.contains("x4") ? "x4"
+                         : linkStr.contains("x8") ? "x8" : "x16";
+
+        makeCombo(connItem, "    PCIe Gen",
+                  {"Gen4", "Gen5"}, curGen,
+                  QString("conn_gen_%1").arg(connKey));
+        makeCombo(connItem, "    \u94fe\u8def\u5bbd\u5ea6",
+                  {"x4", "x8", "x16"}, curWidth,
+                  QString("conn_width_%1").arg(connKey));
+
+        connItem->setExpanded(true);
     }
 }
 
@@ -374,6 +406,7 @@ void ConfigTreeWidget::onComboChanged(QTreeWidgetItem* item, const QString& valu
     QString key = itemKeyMap_.value(item);
     if (key.isEmpty()) return;
 
+    // 交换机延迟
     if (key.startsWith("sw_latency_")) {
         QString swId = key.mid(QString("sw_latency_").length());
         for (auto& sw : config_.switches) {
@@ -382,6 +415,77 @@ void ConfigTreeWidget::onComboChanged(QTreeWidgetItem* item, const QString& valu
                 break;
             }
         }
+
+    // CXL设备类型
+    } else if (key.startsWith("dev_type_")) {
+        QString devId = key.mid(QString("dev_type_").length());
+        for (auto& dev : config_.cxl_devices) {
+            if (QString::fromStdString(dev.id) == devId) {
+                dev.type = value.toStdString();
+                break;
+            }
+        }
+
+    // CXL设备 PCIe Gen
+    } else if (key.startsWith("dev_gen_")) {
+        QString devId = key.mid(QString("dev_gen_").length());
+        for (auto& dev : config_.cxl_devices) {
+            if (QString::fromStdString(dev.id) == devId) {
+                dev.link_gen = value.toStdString();
+                // 更新理论带宽
+                int gen = value.endsWith("4") ? 4 : 5;
+                int w   = dev.link_width == "x4" ? 4 : (dev.link_width == "x8" ? 8 : 16);
+                dev.bandwidth_gbps = (gen == 5 ? 64.0 : 32.0) * w / 16;
+                break;
+            }
+        }
+
+    // CXL设备链路宽度
+    } else if (key.startsWith("dev_width_")) {
+        QString devId = key.mid(QString("dev_width_").length());
+        for (auto& dev : config_.cxl_devices) {
+            if (QString::fromStdString(dev.id) == devId) {
+                dev.link_width = value.toStdString();
+                int gen = dev.link_gen == "Gen4" ? 4 : 5;
+                int w   = value == "x4" ? 4 : (value == "x8" ? 8 : 16);
+                dev.bandwidth_gbps = (gen == 5 ? 64.0 : 32.0) * w / 16;
+                break;
+            }
+        }
+
+    // 连接 PCIe Gen（更新 link 字符串）
+    } else if (key.startsWith("conn_gen_")) {
+        QString connKey = key.mid(QString("conn_gen_").length());
+        for (auto& conn : config_.connections) {
+            QString ck = QString("%1_to_%2")
+                .arg(QString::fromStdString(conn.from))
+                .arg(QString::fromStdString(conn.to));
+            if (ck == connKey) {
+                // 保留宽度部分，更新 Gen
+                QString cur = QString::fromStdString(conn.link);
+                QString width = cur.contains("x4") ? "x4" : (cur.contains("x8") ? "x8" : "x16");
+                QString genNum = value == "Gen4" ? "4.0" : "5.0";
+                conn.link = QString("PCIe%1-%2").arg(genNum).arg(width).toStdString();
+                break;
+            }
+        }
+
+    // 连接链路宽度
+    } else if (key.startsWith("conn_width_")) {
+        QString connKey = key.mid(QString("conn_width_").length());
+        for (auto& conn : config_.connections) {
+            QString ck = QString("%1_to_%2")
+                .arg(QString::fromStdString(conn.from))
+                .arg(QString::fromStdString(conn.to));
+            if (ck == connKey) {
+                QString cur = QString::fromStdString(conn.link);
+                QString genNum = cur.contains("4") ? "4.0" : "5.0";
+                conn.link = QString("PCIe%1-%2").arg(genNum).arg(value).toStdString();
+                break;
+            }
+        }
+
+    // 模拟引擎参数
     } else if (key == "sim_epoch_ms") {
         config_.simulation.epoch_ms = value.toInt();
     } else if (key == "sim_mlp") {
