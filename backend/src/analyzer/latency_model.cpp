@@ -137,13 +137,6 @@ double LatencyModel::calculate_protocol_overhead(double base_latency) const {
     return base_latency * params_.protocol_overhead_ratio;
 }
 
-double LatencyModel::calculate_snoop_overhead(bool requires_snoop) const {
-    if (!requires_snoop) return 0.0;
-    // CXL.cache snoop: broadcast to all caches + response collection
-    // Typical: 30-50ns on a 2-socket system
-    return 40.0;
-}
-
 double LatencyModel::calculate_congestion_penalty(const TopologyPath& path,
                                                   const TopologyGraph& topology) const {
     if (!params_.enable_congestion || path.empty()) {
