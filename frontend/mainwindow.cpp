@@ -348,6 +348,7 @@ void MainWindow::setupMenuBar() {
     startAction->setShortcut(Qt::Key_F5);
     
     QAction* stopAction = simMenu->addAction("\u505c\u6b62\u6a21\u62df [F6]", this, &MainWindow::onStopSimulation);
+}
 
 // 工具栏已删除，功能迁移到侧边栏和拓扑页面
 

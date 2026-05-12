@@ -10,6 +10,7 @@
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QLabel>
+#include <QComboBox>
 
 ConfigTreeWidget::ConfigTreeWidget(QWidget *parent)
     : QWidget(parent)
@@ -249,34 +250,37 @@ void ConfigTreeWidget::addRootComplexItem() {
     makeRow(rcRoot, "  \u6807\u8bc6\u7b26", QString::fromStdString(config_.root_complex.id));
     makeRow(rcRoot, "  \u672c\u5730DRAM\u5927\u5c0f (GB)",
             QString::number(config_.root_complex.local_dram_size_gb), true);
+    makeRow(rcRoot, "  \u672c\u5730DRAM\u5ef6\u8fdf (ns)", "90 (硬编码)");
 }
 
 void ConfigTreeWidget::addSwitchesItem() {
     auto* swRoot = makeCategory(tree_,
         QString("\u25b6 CXL \u4ea4\u6362\u673a (%1\u4e2a)").arg(config_.switches.size()));
-    for (const auto& sw : config_.switches) {
+    for (auto& sw : config_.switches) {
         auto* swItem = new QTreeWidgetItem(swRoot);
         swItem->setText(0, QString("  \u25cf %1").arg(QString::fromStdString(sw.id)));
         swItem->setForeground(0, QColor(0x81, 0xC7, 0x84));
         makeRow(swItem, "    \u7aef\u53e3\u6570", QString::number(sw.num_ports));
-        makeRow(swItem, "    \u5ef6\u8fdf (ns)", QString::number(sw.latency_ns), true);
+        makeCombo(swItem, "    \u5ef6\u8fdf (ns)",
+                  {"15", "20", "30", "40", "60"},
+                  QString::number(static_cast<int>(sw.latency_ns)),
+                  QString("sw_latency_%1").arg(QString::fromStdString(sw.id)));
     }
 }
 
 void ConfigTreeWidget::addDevicesItem() {
     auto* devRoot = makeCategory(tree_,
-        QString("▶ CXL 内存设备 (%1个)").arg(config_.cxl_devices.size()));
+        QString("\u25b6 CXL \u5185\u5b58\u8bbe\u5907 (%1\u4e2a)").arg(config_.cxl_devices.size()));
     devRoot->setExpanded(true);
 
-    // 提示：设备属性应该在拓扑编辑器中配置
     auto* hintItem = new QTreeWidgetItem(devRoot);
-    hintItem->setText(0, "  ℹ 设备属性在拓扑图中配置");
+    hintItem->setText(0, "  \u2139 \u8bbe\u5907\u5c5e\u6027\u5728\u6295\u5c4f\u56fe\u4e2d\u914d\u7f6e");
     hintItem->setForeground(0, QColor(0x88, 0x88, 0x88));
     hintItem->setFlags(Qt::ItemIsEnabled);
-    
+
     for (const auto& dev : config_.cxl_devices) {
         auto* devItem = new QTreeWidgetItem(devRoot);
-        devItem->setText(0, QString("  ● %1").arg(QString::fromStdString(dev.id)));
+        devItem->setText(0, QString("  \u25cf %1").arg(QString::fromStdString(dev.id)));
         devItem->setText(1, QString::fromStdString(dev.type));
         devItem->setForeground(0, QColor(0x4F, 0xC3, 0xF7));
         devItem->setForeground(1, QColor(0x88, 0x88, 0x88));
@@ -302,11 +306,91 @@ void ConfigTreeWidget::addConnectionsItem() {
 void ConfigTreeWidget::addSimulationItem() {
     auto* simRoot = makeCategory(tree_, "▶ 模拟引擎参数");
     simRoot->setToolTip(0, "全局引擎级别的参数配置");
-    
-    makeRow(simRoot, "  Epoch时长 (ms)", QString::number(config_.simulation.epoch_ms), true);
-    makeRow(simRoot, "  MLP优化", config_.simulation.enable_mlp_optimization ? "✓ 开启" : "✗ 关闭");
-    makeRow(simRoot, "  拥塞模型", config_.simulation.enable_congestion_model ? "✓ 开启" : "✗ 关闭");
-    makeRow(simRoot, "  热点检测", "关闭"); // 未来扩展
+
+    makeCombo(simRoot, "  Epoch时长 (ms)",
+              {"5", "10", "20", "50", "100"},
+              QString::number(config_.simulation.epoch_ms),
+              "sim_epoch_ms");
+    makeCombo(simRoot, "  MLP优化",
+              {"✓ 开启", "✗ 关闭"},
+              config_.simulation.enable_mlp_optimization ? "✓ 开启" : "✗ 关闭",
+              "sim_mlp");
+    makeCombo(simRoot, "  拥塞模型",
+              {"✓ 开启", "✗ 关闭"},
+              config_.simulation.enable_congestion_model ? "✓ 开启" : "✗ 关闭",
+              "sim_congestion");
+    makeRow(simRoot, "  热点检测", "关闭 (未开发)");
+}
+
+QComboBox* ConfigTreeWidget::makeCombo(QTreeWidgetItem* parent,
+                                       const QString& label,
+                                       const QStringList& options,
+                                       const QString& current,
+                                       const QString& key) {
+    auto* item = new QTreeWidgetItem(parent);
+    item->setText(0, label);
+    item->setForeground(0, QColor(0x88, 0x88, 0x88));
+    item->setBackground(0, Qt::NoBrush);
+    item->setBackground(1, Qt::NoBrush);
+    item->setFlags(Qt::ItemIsEnabled);
+
+    itemKeyMap_[item] = key;
+
+    auto* combo = new QComboBox(tree_);
+    combo->addItems(options);
+
+    // 将当前值匹配到列表项，找不到就取第一项
+    int idx = options.indexOf(current);
+    if (idx < 0) idx = 0;
+    combo->setCurrentIndex(idx);
+
+    combo->setStyleSheet(
+        "QComboBox { "
+        "    background: #0D0D0D; "
+        "    color: #60A5FA; "
+        "    border: 1px solid #2A2A2A; "
+        "    border-radius: 4px; "
+        "    padding: 2px 8px; "
+        "    font-size: 12px; "
+        "}"
+        "QComboBox::drop-down { border: none; width: 20px; }"
+        "QComboBox QAbstractItemView { "
+        "    background: #111111; "
+        "    color: #E8E8E8; "
+        "    selection-background-color: #1E3A5F; "
+        "}");
+
+    tree_->setItemWidget(item, 1, combo);
+
+    connect(combo, &QComboBox::currentTextChanged,
+            this, [this, item](const QString& val) {
+                onComboChanged(item, val);
+            });
+
+    return combo;
+}
+
+void ConfigTreeWidget::onComboChanged(QTreeWidgetItem* item, const QString& value) {
+    QString key = itemKeyMap_.value(item);
+    if (key.isEmpty()) return;
+
+    if (key.startsWith("sw_latency_")) {
+        QString swId = key.mid(QString("sw_latency_").length());
+        for (auto& sw : config_.switches) {
+            if (QString::fromStdString(sw.id) == swId) {
+                sw.latency_ns = value.toDouble();
+                break;
+            }
+        }
+    } else if (key == "sim_epoch_ms") {
+        config_.simulation.epoch_ms = value.toInt();
+    } else if (key == "sim_mlp") {
+        config_.simulation.enable_mlp_optimization = value.startsWith("✓");
+    } else if (key == "sim_congestion") {
+        config_.simulation.enable_congestion_model = value.startsWith("✓");
+    }
+
+    emit configChanged(config_);
 }
 
 void ConfigTreeWidget::onItemDoubleClicked(QTreeWidgetItem* item, int column) {

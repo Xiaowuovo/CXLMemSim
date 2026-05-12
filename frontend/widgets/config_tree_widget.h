@@ -8,7 +8,10 @@
 
 #include <QWidget>
 #include <QTreeWidget>
+#include <QTreeWidgetItem>
 #include <QPushButton>
+#include <QComboBox>
+#include <QMap>
 #include "config_parser.h"
 
 /**
@@ -34,6 +37,7 @@ public slots:
 
 private slots:
     void onItemDoubleClicked(QTreeWidgetItem* item, int column);
+    void onComboChanged(QTreeWidgetItem* item, const QString& value);
 
 private:
     void setupUI();
@@ -50,6 +54,16 @@ private:
     QPushButton* removeButton_;
 
     cxlsim::CXLSimConfig config_;
+
+    // 记录每个树节点对应的「属性key」，便于combo回调时定位
+    QMap<QTreeWidgetItem*, QString> itemKeyMap_;
+
+    // 创建嵌入树节点的下拉框
+    QComboBox* makeCombo(QTreeWidgetItem* parent,
+                         const QString& label,
+                         const QStringList& options,
+                         const QString& current,
+                         const QString& key);
 };
 
 #endif // CONFIG_TREE_WIDGET_H
