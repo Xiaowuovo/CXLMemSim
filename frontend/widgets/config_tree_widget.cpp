@@ -432,10 +432,18 @@ void ConfigTreeWidget::onComboChanged(QTreeWidgetItem* item, const QString& valu
         for (auto& dev : config_.cxl_devices) {
             if (QString::fromStdString(dev.id) == devId) {
                 dev.link_gen = value.toStdString();
-                // 更新理论带宽
                 int gen = value.endsWith("4") ? 4 : 5;
                 int w   = dev.link_width == "x4" ? 4 : (dev.link_width == "x8" ? 8 : 16);
                 dev.bandwidth_gbps = (gen == 5 ? 64.0 : 32.0) * w / 16;
+                // 同步更新所有连接到该设备的 link 字符串（拓扑边带宽由此决定）
+                QString genNum = (gen == 4) ? "4.0" : "5.0";
+                for (auto& conn : config_.connections) {
+                    if (conn.to == dev.id) {
+                        QString cur = QString::fromStdString(conn.link);
+                        QString width = cur.contains("x4") ? "x4" : (cur.contains("x8") ? "x8" : "x16");
+                        conn.link = QString("PCIe%1-%2").arg(genNum).arg(width).toStdString();
+                    }
+                }
                 break;
             }
         }
@@ -449,6 +457,13 @@ void ConfigTreeWidget::onComboChanged(QTreeWidgetItem* item, const QString& valu
                 int gen = dev.link_gen == "Gen4" ? 4 : 5;
                 int w   = value == "x4" ? 4 : (value == "x8" ? 8 : 16);
                 dev.bandwidth_gbps = (gen == 5 ? 64.0 : 32.0) * w / 16;
+                // 同步更新所有连接到该设备的 link 字符串
+                QString genNum = (gen == 4) ? "4.0" : "5.0";
+                for (auto& conn : config_.connections) {
+                    if (conn.to == dev.id) {
+                        conn.link = QString("PCIe%1-%2").arg(genNum).arg(value).toStdString();
+                    }
+                }
                 break;
             }
         }

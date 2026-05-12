@@ -35,8 +35,17 @@ bool TimingAnalyzer::initialize(const CXLSimConfig& config) {
 
     // Configure analyzer
     config_.epoch_duration_ms = config.simulation.epoch_ms;
+    config_.local_dram_latency_ns = config.root_complex.local_dram_latency_ns;
+    config_.total_local_dram_gb   = config.root_complex.local_dram_size_gb;
+    config_.total_cxl_gb = 0;
+    for (const auto& dev : config.cxl_devices) {
+        config_.total_cxl_gb += dev.capacity_gb;
+    }
 
     std::cout << "[TimingAnalyzer] Initialized successfully" << std::endl;
+    std::cout << "  Local DRAM: " << config_.total_local_dram_gb << " GB @ "
+              << config_.local_dram_latency_ns << " ns" << std::endl;
+    std::cout << "  CXL total: " << config_.total_cxl_gb << " GB" << std::endl;
     std::cout << "  Epoch duration: " << config_.epoch_duration_ms << " ms" << std::endl;
     std::cout << "  MLP optimization: " << (latency_params.enable_mlp ? "ON" : "OFF") << std::endl;
     std::cout << "  Congestion model: " << (latency_params.enable_congestion ? "ON" : "OFF") << std::endl;
@@ -199,11 +208,26 @@ void TimingAnalyzer::process_epoch() {
         current_stats_.queuing_delay_ns = current_stats_.avg_latency_ns * 0.1;
     }
 
-    // Calculate link utilization (simplified: based on access rate)
+    // Tiering ratio: fraction of L3 misses served by CXL (vs local DRAM)
+    if (current_stats_.l3_misses > 0) {
+        current_stats_.tiering_ratio =
+            100.0 * current_stats_.cxl_accesses / current_stats_.l3_misses;
+    }
+    current_stats_.local_dram_latency_ns = config_.local_dram_latency_ns;
+
+    // Calculate link utilization using actual bottleneck bandwidth from topology
     double epoch_duration_s = config_.epoch_duration_ms / 1000.0;
-    double bytes_per_epoch = current_stats_.cxl_accesses * 64.0; // 64 bytes per cache line
+    double bytes_per_epoch = current_stats_.cxl_accesses * 64.0;
     double bandwidth_used_gbps = (bytes_per_epoch / epoch_duration_s) / 1e9;
-    double max_bandwidth_gbps = 64.0; // CXL 2.0: 64 GB/s
+    // Use bottleneck bandwidth from topology path (first CXL device as reference)
+    double max_bandwidth_gbps = 64.0;
+    const auto* rc = topology_.get_root_complex();
+    if (rc && !address_mappings_.empty()) {
+        auto path = const_cast<TopologyGraph&>(topology_).find_path(
+            rc->id, address_mappings_[0].device_id);
+        double bw = topology_.get_path_bottleneck_bandwidth(path);
+        if (bw > 0.0) max_bandwidth_gbps = bw;
+    }
     current_stats_.link_utilization_pct = std::min(100.0, (bandwidth_used_gbps / max_bandwidth_gbps) * 100.0);
 
     // Print stats periodically

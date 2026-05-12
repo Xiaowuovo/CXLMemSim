@@ -56,6 +56,11 @@ LatencyBreakdown LatencyModel::calculate_latency(const std::string& device_id,
     // Protocol overhead
     breakdown.protocol_overhead_ns = calculate_protocol_overhead(breakdown.base_latency_ns);
 
+    // Snoop overhead: if device participates in CXL.cache coherency
+    if (device->data.cxl_device.supports_coherency) {
+        breakdown.protocol_overhead_ns += calculate_snoop_overhead(true);
+    }
+
     // Congestion penalty (if enabled)
     if (params_.enable_congestion) {
         breakdown.congestion_penalty_ns = calculate_congestion_penalty(path, topology);
@@ -98,8 +103,14 @@ double LatencyModel::calculate_access_latency(const MemoryAccessEvent& event,
     if (total < base * 0.5) total = base * 0.5;  // floor at 50% of base
 
     // Apply MLP optimization if enabled
+    // Estimate MLP degree from address stride pattern:
+    // addresses close together (same cache set) = low MLP
+    // addresses spread across pages = high MLP (CPU issues multiple prefetches)
     if (params_.enable_mlp) {
-        return apply_mlp_optimization(total, 1);
+        // Use low bits of address to estimate outstanding requests
+        // Real HW: load buffers typically hold 10-20 outstanding misses
+        int mlp_degree = 1 + static_cast<int>((event.virtual_addr >> 12) & 0xF); // 1..16
+        return apply_mlp_optimization(total, mlp_degree);
     }
 
     return total;
@@ -124,6 +135,13 @@ double LatencyModel::apply_mlp_optimization(double base_latency, int mlp_degree)
 double LatencyModel::calculate_protocol_overhead(double base_latency) const {
     // CXL protocol overhead as a fraction of base latency
     return base_latency * params_.protocol_overhead_ratio;
+}
+
+double LatencyModel::calculate_snoop_overhead(bool requires_snoop) const {
+    if (!requires_snoop) return 0.0;
+    // CXL.cache snoop: broadcast to all caches + response collection
+    // Typical: 30-50ns on a 2-socket system
+    return 40.0;
 }
 
 double LatencyModel::calculate_congestion_penalty(const TopologyPath& path,

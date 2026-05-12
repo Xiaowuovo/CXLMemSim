@@ -50,13 +50,16 @@ struct EpochStats {
     double p99_latency_ns;           ///< P99尾延迟（最坏情况）
     double queuing_delay_ns;         ///< 拥塞排队延迟
     double link_utilization_pct;     ///< 链路平均利用率 0-100%
+    double tiering_ratio;            ///< CXL访问占总L3 miss的比例 0-100%
+    double local_dram_latency_ns;    ///< 本地DRAM参考延迟（用于对比）
     uint64_t epoch_number;
 
     EpochStats()
         : total_accesses(0), l3_misses(0), cxl_accesses(0), local_dram_accesses(0),
           total_injected_delay_ns(0), avg_latency_ns(0), 
           p95_latency_ns(0), p99_latency_ns(0), 
-          queuing_delay_ns(0), link_utilization_pct(0), epoch_number(0) {}
+          queuing_delay_ns(0), link_utilization_pct(0),
+          tiering_ratio(0), local_dram_latency_ns(90.0), epoch_number(0) {}
 };
 
 /**
@@ -67,10 +70,14 @@ struct TimingAnalyzerConfig {
     bool enable_injection;          ///< Enable actual delay injection
     bool verbose_logging;           ///< Enable detailed logging
     double bandwidth_sample_rate;   ///< How often to update bandwidth (0.0-1.0)
+    double local_dram_latency_ns;   ///< Local DRAM latency for tiering comparison
+    uint64_t total_local_dram_gb;   ///< Local DRAM capacity
+    uint64_t total_cxl_gb;          ///< Total CXL capacity
 
     TimingAnalyzerConfig()
         : epoch_duration_ms(10), enable_injection(true),
-          verbose_logging(false), bandwidth_sample_rate(0.1) {}
+          verbose_logging(false), bandwidth_sample_rate(0.1),
+          local_dram_latency_ns(90.0), total_local_dram_gb(64), total_cxl_gb(0) {}
 };
 
 /**

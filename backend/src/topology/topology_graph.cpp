@@ -50,7 +50,8 @@ bool TopologyGraph::build_from_config(const CXLSimConfig& config) {
         dev_node.id = dev_cfg.id;
         dev_node.type = ComponentType::CXL_DEVICE;
         dev_node.data.cxl_device.capacity_gb = dev_cfg.capacity_gb;
-        dev_node.data.cxl_device.base_latency_ns = dev_cfg.base_latency_ns;
+        // media_latency 叠加到 base_latency：DRAM 介质延迟是设备延迟的组成部分
+        dev_node.data.cxl_device.base_latency_ns = dev_cfg.base_latency_ns + dev_cfg.media_latency_ns;
         dev_node.data.cxl_device.supports_coherency = dev_cfg.supports_coherency;
 
         if (!add_node(dev_node)) {
@@ -74,7 +75,10 @@ bool TopologyGraph::build_from_config(const CXLSimConfig& config) {
             edge.bandwidth_gbps = 32.0;  // Gen4 x16
         }
 
-        if (conn.link.find("x8") != std::string::npos) {
+        if (conn.link.find("x4") != std::string::npos) {
+            edge.link_width = 4;
+            edge.bandwidth_gbps /= 4;
+        } else if (conn.link.find("x8") != std::string::npos) {
             edge.link_width = 8;
             edge.bandwidth_gbps /= 2;
         } else {

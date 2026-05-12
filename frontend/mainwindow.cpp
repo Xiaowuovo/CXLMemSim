@@ -38,6 +38,8 @@
 #include <QApplication>
 #include <fstream>
 #include <iostream>
+#include <cmath>
+#include <algorithm>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -700,36 +702,78 @@ void MainWindow::onStartSimulation() {
             return;
         }
         
-        // 创建并配置MockTracer（用于模拟内存访问事件）
+        // 创建并配置 MockTracer，根据 WorkloadConfig 动态设置参数
         auto tracer = std::make_shared<cxlsim::MockTracer>();
-        tracer->set_simulation_params(0.20, 150); // 20% L3 miss rate, 150ns latency
-        tracer->set_address_range(0x100000000, 0x200000000); // 4GB-8GB range
+
+        const auto& wl = config_.workload;
+
+        if (wl.trace_driven && !wl.trace_file_path.empty()) {
+            // Trace-Driven 模式：加载用户提供的 trace 文件
+            if (!tracer->load_trace_file(wl.trace_file_path)) {
+                QMessageBox::critical(this, "❌ Trace 文件错误",
+                    QString("无法加载 Trace 文件：\n%1\n\n请确认文件存在且为合法 JSON 格式。")
+                    .arg(QString::fromStdString(wl.trace_file_path)));
+                analyzer_.reset();
+                return;
+            }
+            tracer->set_loop_mode(true);
+            if (logView_) logView_->append(QString("[INFO] Trace-Driven 模式，已加载: %1")
+                .arg(QString::fromStdString(wl.trace_file_path)));
+        } else {
+            // Synthetic 模式：根据 WorkloadConfig 推算 L3 miss rate 和平均延迟
+            // Working set > L3 cache (假设 L3 = 32MB) 则 miss rate 随工作集增大
+            double working_set_mb = wl.working_set_gb * 1024.0;
+            double l3_size_mb = 32.0; // 典型服务器 L3
+            double miss_rate = std::min(0.95, working_set_mb / (l3_size_mb * 4.0));
+            miss_rate = std::max(0.05, miss_rate); // 最低 5%
+
+            // 平均延迟基于 injection_rate：高注入率 -> 拥塞 -> 延迟更高
+            double base_ns = 150.0;
+            double congestion_factor = std::min(3.0, wl.injection_rate_gbps / 20.0);
+            double avg_latency = base_ns * (1.0 + congestion_factor * 0.5);
+
+            tracer->set_simulation_params(miss_rate, static_cast<uint64_t>(avg_latency));
+
+            // 地址范围：根据 working_set_gb 设定，让地址分布真实反映工作集大小
+            uint64_t base_addr = 0x100000000ULL;
+            uint64_t range = static_cast<uint64_t>(wl.working_set_gb) << 30;
+            tracer->set_address_range(base_addr, base_addr + range);
+
+            if (logView_) logView_->append(
+                QString("[INFO] Synthetic 模式: miss_rate=%.1f%%, avg_lat=%.0fns, "
+                        "working_set=%2GB, rate=%.1fGB/s, threads=%3")
+                .arg(miss_rate * 100, 0, 'f', 1)
+                .arg(avg_latency, 0, 'f', 0)
+                .arg(wl.working_set_gb)
+                .arg(wl.injection_rate_gbps, 0, 'f', 1)
+                .arg(wl.num_threads));
+        }
+
         tracer->initialize(0);
         analyzer_->set_tracer(tracer);
-        
-        // 配置地址映射：将MockTracer生成的地址映射到CXL设备
-        // 这是关键：没有地址映射，所有内存访问都不会被识别为CXL访问
-        uint64_t base_addr = 0x100000000; // 4GB起始（每次重新初始化）
+
+        // 配置地址映射：按设备实际容量分配地址空间
+        uint64_t base_addr = 0x100000000ULL;
         for (const auto& device : config_.cxl_devices) {
             cxlsim::AddressMapping mapping;
             mapping.device_id = device.id;
-            // 为每个CXL设备分配地址空间
-            // 简化：每个设备分配1GB空间
+            uint64_t dev_bytes = (device.capacity_gb > 0 ? device.capacity_gb : 1ULL) << 30;
             mapping.start_addr = base_addr;
-            mapping.end_addr = base_addr + (1ULL << 30); // +1GB
+            mapping.end_addr   = base_addr + dev_bytes;
             base_addr = mapping.end_addr;
-            
+
             analyzer_->add_address_mapping(mapping);
-            
+
             if (logView_) {
-                logView_->append(QString("[INFO] 地址映射: %1 -> 0x%2-0x%3")
+                logView_->append(QString("[INFO] 地址映射: %1 (%2GB) -> 0x%3-0x%4")
                     .arg(QString::fromStdString(device.id))
+                    .arg(device.capacity_gb)
                     .arg(mapping.start_addr, 0, 16)
                     .arg(mapping.end_addr, 0, 16));
             }
         }
-        
-        if (logView_) logView_->append("[INFO] ✓ MockTracer 已配置 (20% L3 miss, 150ns)");
+
+        if (logView_) logView_->append("[INFO] ✓ MockTracer 已根据 WorkloadConfig 配置完成");
     }
 
     // 启动分析器后台线程
