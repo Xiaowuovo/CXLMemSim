@@ -495,10 +495,52 @@ void MainWindow::createConnections() {
         connect(sidebar_, &SidebarWidget::exportDataRequested, this, &MainWindow::onExportData);
     }
 
-    // ── 配置树 -> 拓扑图 ──
-    if (configTree_ && topologyEditor_) {
-        connect(configTree_, &ConfigTreeWidget::configChanged,
-                topologyEditor_, &TopologyEditorWidget::updateTopology);
+    // ── 配置树「应用配置」按钮 ──
+    if (configTree_) {
+        connect(configTree_, &ConfigTreeWidget::configApplied,
+                this, [this](const cxlsim::CXLSimConfig& newConfig) {
+                    config_ = newConfig;
+                    // 同步拓扑图
+                    if (topologyEditor_) topologyEditor_->updateTopology(config_);
+                    updateStatus("✓ 配置已应用");
+                    if (logView_) logView_->append("[INFO] ✅ 配置已应用");
+
+                    // 如果模拟正在运行，提示是否重启
+                    if (simulationRunning_) {
+                        auto btn = QMessageBox::question(
+                            this, "配置已更改",
+                            "配置已应用。当前模拟使用旧配置运行中。
+
+是否要应用新配置并重启模拟？",
+                            QMessageBox::Yes | QMessageBox::No,
+                            QMessageBox::No);
+                        if (btn == QMessageBox::Yes) {
+                            // 先提示是否导出本次结果
+                            if (!epochHistory_.empty()) {
+                                auto exportBtn = QMessageBox::question(
+                                    this, "是否导出本次实验数据",
+                                    QString("重启前已收集 %1 个 Epoch 数据。
+是否在重启前导出本次实验结果？")
+                                        .arg(epochHistory_.size()),
+                                    QMessageBox::Yes | QMessageBox::No,
+                                    QMessageBox::Yes);
+                                if (exportBtn == QMessageBox::Yes) {
+                                    onExportData();
+                                }
+                            }
+                            onStopSimulation();
+                            analyzer_.reset();
+                            onStartSimulation();
+                        }
+                    }
+                });
+
+        connect(configTree_, &ConfigTreeWidget::configDirty,
+                this, [this](bool dirty) {
+                    if (dirty) {
+                        updateStatus("配置已修改——请点击「应用配置」使修改生效");
+                    }
+                });
     }
 
     // ── 拓扑图修改 -> 更新配置树 ──
@@ -1045,13 +1087,21 @@ void MainWindow::onExportData() {
     
     QJsonDocument doc(configSnapshot);
     dialog.setConfigData(doc.toJson(QJsonDocument::Indented));
-    
-    // 显示对话框
-    if (dialog.exec() == QDialog::Accepted) {
-        updateStatus("✓ 数据导出完成");
-        if (logView_) {
-            logView_->append(QString("[INFO] 📦 已导出 %1 个Epoch的性能数据")
-                .arg(epochHistory_.size()));
-        }
-    }
+
+    // 传入已有的会话历史
+    dialog.setSessionHistory(sessionHistory_);
+
+    // 导出完成后更新会话历史
+    connect(&dialog, &ExportDialog::exportDone,
+            this, [this](const ExportDialog::SessionRecord& rec) {
+                sessionHistory_.prepend(rec);
+                if (sessionHistory_.size() > 50) sessionHistory_.removeLast();
+                updateStatus(QString("✓ 已导出  [%1]  %2 epochs")
+                    .arg(rec.tag).arg(rec.epochCount));
+                if (logView_) logView_->append(
+                    QString("[INFO] 📦 导出完成 tag=%1  epochs=%2  lat=%.1f ns")
+                    .arg(rec.tag).arg(rec.epochCount).arg(rec.avgLatencyNs));
+            });
+
+    dialog.exec();
 }

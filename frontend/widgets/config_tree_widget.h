@@ -28,16 +28,19 @@ public:
     cxlsim::CXLSimConfig getConfig() const;
 
 signals:
-    void configChanged(const cxlsim::CXLSimConfig& config);
+    // 用户点击「应用配置」后发出，携带已应用的配置
+    void configApplied(const cxlsim::CXLSimConfig& config);
+    // 任何参数被修改（尚未应用），供主窗口变灰提示
+    void configDirty(bool dirty);
 
 public slots:
-    void onAddDevice();
-    void onAddSwitch();
-    void onRemoveSelected();
+    void onApplyConfig();
+    void onResetConfig();
 
 private slots:
     void onItemDoubleClicked(QTreeWidgetItem* item, int column);
     void onComboChanged(QTreeWidgetItem* item, const QString& value);
+    void markDirty();
 
 private:
     void setupUI();
@@ -47,13 +50,15 @@ private:
     void addDevicesItem();
     void addConnectionsItem();
     void addSimulationItem();
+    void updateApplyButtonState();
 
     QTreeWidget* tree_;
-    QPushButton* addDeviceButton_;
-    QPushButton* addSwitchButton_;
-    QPushButton* removeButton_;
+    QPushButton* applyButton_;
+    QPushButton* resetButton_;
 
-    cxlsim::CXLSimConfig config_;
+    cxlsim::CXLSimConfig config_;        // 已应用的基准配置
+    cxlsim::CXLSimConfig pendingConfig_; // 编辑中、尚未应用的配置
+    bool isDirty_{false};               // 是否有未应用的变更
 
     // 记录每个树节点对应的「属性key」，便于combo回调时定位
     QMap<QTreeWidgetItem*, QString> itemKeyMap_;

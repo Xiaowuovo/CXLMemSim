@@ -16,6 +16,7 @@
 #include <memory>
 #include "config_parser.h"
 #include "analyzer/timing_analyzer.h"
+#include "widgets/export_dialog.h"
 
 class TopologyEditorWidget;
 class ConfigTreeWidget;
@@ -94,7 +95,9 @@ private:
     
     // 历史数据收集（用于导出）
     std::vector<cxlsim::EpochStats> epochHistory_;
-    static const size_t MAX_HISTORY_SIZE = 100000; // 最多保存10万个epoch
+    static const size_t MAX_HISTORY_SIZE = 100000;
+    // 导出会话历史
+    QList<ExportDialog::SessionRecord> sessionHistory_;
 };
 
 #endif // MAINWINDOW_H

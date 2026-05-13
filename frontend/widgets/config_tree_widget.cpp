@@ -107,86 +107,74 @@ void ConfigTreeWidget::setupUI() {
 
     mainLayout->addWidget(tree_);
 
-    // 操作按钮行 (现代化极简按钮)
+    // ── 操作按钮行：应用配置 / 重置配置 ──
     auto* btnLayout = new QHBoxLayout();
     btnLayout->setSpacing(8);
 
-    // 专业级操作按钮样式
-    QString modernBtnStyle = 
-        "QPushButton { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #1A1A1A, stop:1 #0F0F0F); "
-        "    color: #E8E8E8; "
-        "    border: 1px solid #2A2A2A; "
-        "    border-radius: 7px; "
-        "    padding: 10px 16px; "
-        "    font-size: 13px; "
-        "    font-weight: 500; "
-        "}"
-        "QPushButton:hover { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #252525, stop:1 #1A1A1A); "
-        "    border-color: #4FC3F7; "
-        "    color: #FFFFFF;"
-        "}"
-        "QPushButton:pressed { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #0F0F0F, stop:1 #1A1A1A); "
-        "    border-color: #4FC3F7;"
-        "}";
+    resetButton_ = new QPushButton("↺ 重置配置", this);
+    resetButton_->setCursor(Qt::PointingHandCursor);
+    resetButton_->setStyleSheet(
+        "QPushButton { background: #0F0F0F; color: #888888; "
+        "border: 1px solid #2A2A2A; border-radius: 7px; "
+        "padding: 10px 16px; font-size: 13px; font-weight: 500; }"
+        "QPushButton:hover { background: #1A1A1A; color: #AAAAAA; border-color: #444; }"
+        "QPushButton:disabled { color: #444; border-color: #1A1A1A; }");
+    connect(resetButton_, &QPushButton::clicked, this, &ConfigTreeWidget::onResetConfig);
+    btnLayout->addWidget(resetButton_);
 
-    addDeviceButton_ = new QPushButton("➕ Add Device", this);
-    addDeviceButton_->setStyleSheet(modernBtnStyle);
-    addDeviceButton_->setCursor(Qt::PointingHandCursor);
-    connect(addDeviceButton_, &QPushButton::clicked, this, &ConfigTreeWidget::onAddDevice);
-    btnLayout->addWidget(addDeviceButton_);
-
-    addSwitchButton_ = new QPushButton("➕ Add Switch", this);
-    addSwitchButton_->setStyleSheet(modernBtnStyle);
-    addSwitchButton_->setCursor(Qt::PointingHandCursor);
-    connect(addSwitchButton_, &QPushButton::clicked, this, &ConfigTreeWidget::onAddSwitch);
-    btnLayout->addWidget(addSwitchButton_);
-
-    // 删除按钮使用警告色
-    QString removeBtnStyle = 
-        "QPushButton { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #1A0A0A, stop:1 #0F0505); "
-        "    color: #F87171; "
-        "    border: 1px solid #3A1A1A; "
-        "    border-radius: 7px; "
-        "    padding: 10px 16px; "
-        "    font-size: 13px; "
-        "    font-weight: 500; "
-        "}"
-        "QPushButton:hover { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #2A1515, stop:1 #1A0A0A); "
-        "    border-color: #EF4444; "
-        "    color: #FCA5A5;"
-        "}"
-        "QPushButton:pressed { "
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "        stop:0 #0F0505, stop:1 #1A0A0A); "
-        "}";
-    
-    removeButton_ = new QPushButton("🗑 Remove", this);
-    removeButton_->setStyleSheet(removeBtnStyle);
-    removeButton_->setCursor(Qt::PointingHandCursor);
-    connect(removeButton_, &QPushButton::clicked, this, &ConfigTreeWidget::onRemoveSelected);
-    btnLayout->addWidget(removeButton_);
+    applyButton_ = new QPushButton("✓ 应用配置", this);
+    applyButton_->setCursor(Qt::PointingHandCursor);
+    applyButton_->setStyleSheet(
+        "QPushButton { background: #0A2A1A; color: #4ADE80; "
+        "border: 1px solid #166534; border-radius: 7px; "
+        "padding: 10px 16px; font-size: 13px; font-weight: 600; }"
+        "QPushButton:hover { background: #0D3D26; color: #86EFAC; border-color: #22C55E; }"
+        "QPushButton:disabled { background: #0A0A0A; color: #444; border-color: #1A1A1A; }");
+    connect(applyButton_, &QPushButton::clicked, this, &ConfigTreeWidget::onApplyConfig);
+    btnLayout->addWidget(applyButton_);
 
     mainLayout->addLayout(btnLayout);
+    updateApplyButtonState();
 }
 
 void ConfigTreeWidget::setConfig(const cxlsim::CXLSimConfig& config) {
     config_ = config;
+    pendingConfig_ = config;
+    isDirty_ = false;
     populateTree();
-    // 不发出 configChanged 信号，避免循环更新
+    updateApplyButtonState();
 }
 
 cxlsim::CXLSimConfig ConfigTreeWidget::getConfig() const {
-    return config_;
+    return isDirty_ ? pendingConfig_ : config_;
+}
+
+void ConfigTreeWidget::onApplyConfig() {
+    config_ = pendingConfig_;
+    isDirty_ = false;
+    updateApplyButtonState();
+    emit configApplied(config_);
+}
+
+void ConfigTreeWidget::onResetConfig() {
+    pendingConfig_ = config_;
+    isDirty_ = false;
+    populateTree();
+    updateApplyButtonState();
+}
+
+void ConfigTreeWidget::markDirty() {
+    if (!isDirty_) {
+        isDirty_ = true;
+        updateApplyButtonState();
+        emit configDirty(true);
+    }
+}
+
+void ConfigTreeWidget::updateApplyButtonState() {
+    applyButton_->setEnabled(isDirty_);
+    resetButton_->setEnabled(isDirty_);
+    applyButton_->setText(isDirty_ ? "✓ 应用配置 ●" : "✓ 应用配置");
 }
 
 static QTreeWidgetItem* makeCategory(QTreeWidget* tree, const QString& text) {
@@ -409,7 +397,7 @@ void ConfigTreeWidget::onComboChanged(QTreeWidgetItem* item, const QString& valu
     // 交换机延迟
     if (key.startsWith("sw_latency_")) {
         QString swId = key.mid(QString("sw_latency_").length());
-        for (auto& sw : config_.switches) {
+        for (auto& sw : pendingConfig_.switches) {
             if (QString::fromStdString(sw.id) == swId) {
                 sw.latency_ns = value.toDouble();
                 break;
@@ -419,7 +407,7 @@ void ConfigTreeWidget::onComboChanged(QTreeWidgetItem* item, const QString& valu
     // CXL设备类型
     } else if (key.startsWith("dev_type_")) {
         QString devId = key.mid(QString("dev_type_").length());
-        for (auto& dev : config_.cxl_devices) {
+        for (auto& dev : pendingConfig_.cxl_devices) {
             if (QString::fromStdString(dev.id) == devId) {
                 dev.type = value.toStdString();
                 break;
@@ -429,15 +417,14 @@ void ConfigTreeWidget::onComboChanged(QTreeWidgetItem* item, const QString& valu
     // CXL设备 PCIe Gen
     } else if (key.startsWith("dev_gen_")) {
         QString devId = key.mid(QString("dev_gen_").length());
-        for (auto& dev : config_.cxl_devices) {
+        for (auto& dev : pendingConfig_.cxl_devices) {
             if (QString::fromStdString(dev.id) == devId) {
                 dev.link_gen = value.toStdString();
                 int gen = value.endsWith("4") ? 4 : 5;
                 int w   = dev.link_width == "x4" ? 4 : (dev.link_width == "x8" ? 8 : 16);
                 dev.bandwidth_gbps = (gen == 5 ? 64.0 : 32.0) * w / 16;
-                // 同步更新所有连接到该设备的 link 字符串（拓扑边带宽由此决定）
                 QString genNum = (gen == 4) ? "4.0" : "5.0";
-                for (auto& conn : config_.connections) {
+                for (auto& conn : pendingConfig_.connections) {
                     if (conn.to == dev.id) {
                         QString cur = QString::fromStdString(conn.link);
                         QString width = cur.contains("x4") ? "x4" : (cur.contains("x8") ? "x8" : "x16");
@@ -451,15 +438,14 @@ void ConfigTreeWidget::onComboChanged(QTreeWidgetItem* item, const QString& valu
     // CXL设备链路宽度
     } else if (key.startsWith("dev_width_")) {
         QString devId = key.mid(QString("dev_width_").length());
-        for (auto& dev : config_.cxl_devices) {
+        for (auto& dev : pendingConfig_.cxl_devices) {
             if (QString::fromStdString(dev.id) == devId) {
                 dev.link_width = value.toStdString();
                 int gen = dev.link_gen == "Gen4" ? 4 : 5;
                 int w   = value == "x4" ? 4 : (value == "x8" ? 8 : 16);
                 dev.bandwidth_gbps = (gen == 5 ? 64.0 : 32.0) * w / 16;
-                // 同步更新所有连接到该设备的 link 字符串
                 QString genNum = (gen == 4) ? "4.0" : "5.0";
-                for (auto& conn : config_.connections) {
+                for (auto& conn : pendingConfig_.connections) {
                     if (conn.to == dev.id) {
                         conn.link = QString("PCIe%1-%2").arg(genNum).arg(value).toStdString();
                     }
@@ -471,12 +457,11 @@ void ConfigTreeWidget::onComboChanged(QTreeWidgetItem* item, const QString& valu
     // 连接 PCIe Gen（更新 link 字符串）
     } else if (key.startsWith("conn_gen_")) {
         QString connKey = key.mid(QString("conn_gen_").length());
-        for (auto& conn : config_.connections) {
+        for (auto& conn : pendingConfig_.connections) {
             QString ck = QString("%1_to_%2")
                 .arg(QString::fromStdString(conn.from))
                 .arg(QString::fromStdString(conn.to));
             if (ck == connKey) {
-                // 保留宽度部分，更新 Gen
                 QString cur = QString::fromStdString(conn.link);
                 QString width = cur.contains("x4") ? "x4" : (cur.contains("x8") ? "x8" : "x16");
                 QString genNum = value == "Gen4" ? "4.0" : "5.0";
@@ -488,7 +473,7 @@ void ConfigTreeWidget::onComboChanged(QTreeWidgetItem* item, const QString& valu
     // 连接链路宽度
     } else if (key.startsWith("conn_width_")) {
         QString connKey = key.mid(QString("conn_width_").length());
-        for (auto& conn : config_.connections) {
+        for (auto& conn : pendingConfig_.connections) {
             QString ck = QString("%1_to_%2")
                 .arg(QString::fromStdString(conn.from))
                 .arg(QString::fromStdString(conn.to));
@@ -502,14 +487,14 @@ void ConfigTreeWidget::onComboChanged(QTreeWidgetItem* item, const QString& valu
 
     // 模拟引擎参数
     } else if (key == "sim_epoch_ms") {
-        config_.simulation.epoch_ms = value.toInt();
+        pendingConfig_.simulation.epoch_ms = value.toInt();
     } else if (key == "sim_mlp") {
-        config_.simulation.enable_mlp_optimization = value.startsWith("✓");
+        pendingConfig_.simulation.enable_mlp_optimization = value.startsWith("✓");
     } else if (key == "sim_congestion") {
-        config_.simulation.enable_congestion_model = value.startsWith("✓");
+        pendingConfig_.simulation.enable_congestion_model = value.startsWith("✓");
     }
 
-    emit configChanged(config_);
+    markDirty();
 }
 
 void ConfigTreeWidget::onItemDoubleClicked(QTreeWidgetItem* item, int column) {
@@ -518,20 +503,37 @@ void ConfigTreeWidget::onItemDoubleClicked(QTreeWidgetItem* item, int column) {
     QString cur  = item->text(1);
     bool ok;
     QString nv = QInputDialog::getText(
-        this, "\u7f16\u8f91\u5c5e\u6027", prop + ":", QLineEdit::Normal, cur, &ok);
+        this, "编辑属性", prop + ":", QLineEdit::Normal, cur, &ok);
     if (ok && !nv.isEmpty()) {
         item->setText(1, nv);
-        emit configChanged(config_);
+        // 将可编辑行的文本变更写入 pendingConfig_
+        if (prop.contains("DRAM大小")) {
+            pendingConfig_.root_complex.local_dram_size_gb = nv.toULongLong();
+        } else if (prop.contains("延迟") && prop.contains("ns")) {
+            // 设备延迟行 -- 尝试匹配父节点设备ID
+            auto* parent = item->parent();
+            if (parent) {
+                QString devId = parent->text(0).trimmed().mid(1).trimmed();
+                for (auto& dev : pendingConfig_.cxl_devices) {
+                    if (QString::fromStdString(dev.id) == devId) {
+                        dev.base_latency_ns = nv.toDouble();
+                        break;
+                    }
+                }
+            }
+        }
+        config_ = pendingConfig_;
+        markDirty();
     }
 }
 
 void ConfigTreeWidget::onAddDevice() {
     bool ok;
     QString id = QInputDialog::getText(
-        this, "\u6dfb\u52a0 CXL \u5185\u5b58\u8bbe\u5907",
-        "\u8bbe\u5907\u6807\u8bc6\u7b26 (ID):",
+        this, "添加 CXL 内存设备",
+        "设备标识符 (ID):",
         QLineEdit::Normal,
-        QString("CXL_MEM%1").arg(config_.cxl_devices.size()), &ok);
+        QString("CXL_MEM%1").arg(pendingConfig_.cxl_devices.size()), &ok);
     if (!ok || id.isEmpty()) return;
 
     cxlsim::CXLDeviceConfig dev;
@@ -541,9 +543,10 @@ void ConfigTreeWidget::onAddDevice() {
     dev.bandwidth_gbps  = 64.0;
     dev.base_latency_ns = 170.0;
 
-    config_.cxl_devices.push_back(dev);
+    pendingConfig_.cxl_devices.push_back(dev);
+    config_ = pendingConfig_;
     populateTree();
-    emit configChanged(config_);
+    markDirty();
 }
 
 void ConfigTreeWidget::onAddSwitch() {
@@ -552,7 +555,7 @@ void ConfigTreeWidget::onAddSwitch() {
         this, "\u6dfb\u52a0 CXL \u4ea4\u6362\u673a",
         "\u4ea4\u6362\u673a\u6807\u8bc6\u7b26 (ID):",
         QLineEdit::Normal,
-        QString("SW%1").arg(config_.switches.size()), &ok);
+        QString("SW%1").arg(pendingConfig_.switches.size()), &ok);
     if (!ok || id.isEmpty()) return;
 
     cxlsim::SwitchConfig sw;
@@ -560,9 +563,10 @@ void ConfigTreeWidget::onAddSwitch() {
     sw.num_ports = 8;
     sw.latency_ns = 40.0;
 
-    config_.switches.push_back(sw);
+    pendingConfig_.switches.push_back(sw);
+    config_ = pendingConfig_;
     populateTree();
-    emit configChanged(config_);
+    markDirty();
 }
 
 void ConfigTreeWidget::onRemoveSelected() {
@@ -579,21 +583,23 @@ void ConfigTreeWidget::onRemoveSelected() {
         QString id = itemText.mid(1).trimmed(); // 移除 ● 符号
         
         // 尝试删除设备
-        for (auto it = config_.cxl_devices.begin(); it != config_.cxl_devices.end(); ++it) {
+        for (auto it = pendingConfig_.cxl_devices.begin(); it != pendingConfig_.cxl_devices.end(); ++it) {
             if (QString::fromStdString(it->id) == id) {
-                config_.cxl_devices.erase(it);
+                pendingConfig_.cxl_devices.erase(it);
+                config_ = pendingConfig_;
                 populateTree();
-                emit configChanged(config_);
+                markDirty();
                 return;
             }
         }
         
         // 尝试删除交换机
-        for (auto it = config_.switches.begin(); it != config_.switches.end(); ++it) {
+        for (auto it = pendingConfig_.switches.begin(); it != pendingConfig_.switches.end(); ++it) {
             if (QString::fromStdString(it->id) == id) {
-                config_.switches.erase(it);
+                pendingConfig_.switches.erase(it);
+                config_ = pendingConfig_;
                 populateTree();
-                emit configChanged(config_);
+                markDirty();
                 return;
             }
         }
@@ -602,3 +608,4 @@ void ConfigTreeWidget::onRemoveSelected() {
     QMessageBox::information(this, "提示",
         "请选中具体的设备或交换机节点（带 ● 标记的项）进行删除");
 }
+
