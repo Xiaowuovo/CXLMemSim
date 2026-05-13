@@ -15,9 +15,6 @@
 ConfigTreeWidget::ConfigTreeWidget(QWidget *parent)
     : QWidget(parent)
     , tree_(nullptr)
-    , addDeviceButton_(nullptr)
-    , addSwitchButton_(nullptr)
-    , removeButton_(nullptr)
 {
     setupUI();
     config_ = cxlsim::ConfigParser::create_default_config();

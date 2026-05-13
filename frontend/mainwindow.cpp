@@ -509,9 +509,7 @@ void MainWindow::createConnections() {
                     if (simulationRunning_) {
                         auto btn = QMessageBox::question(
                             this, "配置已更改",
-                            "配置已应用。当前模拟使用旧配置运行中。
-
-是否要应用新配置并重启模拟？",
+                            "配置已应用。当前模拟使用旧配置运行中。\n\n是否要应用新配置并重启模拟？",
                             QMessageBox::Yes | QMessageBox::No,
                             QMessageBox::No);
                         if (btn == QMessageBox::Yes) {
@@ -519,8 +517,7 @@ void MainWindow::createConnections() {
                             if (!epochHistory_.empty()) {
                                 auto exportBtn = QMessageBox::question(
                                     this, "是否导出本次实验数据",
-                                    QString("重启前已收集 %1 个 Epoch 数据。
-是否在重启前导出本次实验结果？")
+                                    QString("重启前已收集 %1 个 Epoch 数据。\n是否在重启前导出本次实验结果？")
                                         .arg(epochHistory_.size()),
                                     QMessageBox::Yes | QMessageBox::No,
                                     QMessageBox::Yes);
