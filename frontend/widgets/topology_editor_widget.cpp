@@ -160,56 +160,93 @@ double TopologyEditorWidget::zoomLevel() const {
 void TopologyEditorWidget::setupToolBar() {
     toolbar_ = new QToolBar(this);
     toolbar_->setMovable(false);
-    toolbar_->setIconSize(QSize(20, 20));
+    toolbar_->setIconSize(QSize(16, 16));
+
+    // ── 统一工具栏底色与全局主题一致 ──────────────────────────────────────────
     toolbar_->setStyleSheet(
-        "QToolBar{background:#16213E;border-bottom:2px solid #0F3460;padding:4px 8px;spacing:6px;}"
-        "QToolButton{background:#0F3460;color:#E0E0E0;border:1px solid #4FC3F7;"
-        "border-radius:4px;padding:6px 12px;font-size:11px;min-width:60px;}"
-        "QToolButton:hover{background:#1A4A7A;border-color:#81D4FA;}"
-        "QToolButton:pressed{background:#4FC3F7;color:#1A1A2E;}");
+        "QToolBar {"
+        "  background: #0D0D0D;"
+        "  border-bottom: 1px solid #1E1E1E;"
+        "  padding: 3px 10px;"
+        "  spacing: 4px;"
+        "}"
+        "QToolBar::separator {"
+        "  background: #2A2A2A;"
+        "  width: 1px;"
+        "  margin: 5px 8px;"
+        "}"
+        // 默认编辑类按钮：低调暗蓝灰
+        "QToolButton {"
+        "  background: #161616;"
+        "  color: #AAAAAA;"
+        "  border: 1px solid #2A2A2A;"
+        "  border-radius: 5px;"
+        "  padding: 5px 11px;"
+        "  font-size: 11px;"
+        "  min-width: 56px;"
+        "}"
+        "QToolButton:hover {"
+        "  background: #1E1E1E;"
+        "  color: #EDEDED;"
+        "  border-color: #3A3A3A;"
+        "}"
+        "QToolButton:pressed { background: #252525; }"
+        "QToolButton:checked {"
+        "  background: #0D2035;"
+        "  color: #4FC3F7;"
+        "  border-color: #1E4D6B;"
+        "}");
+
+    // ═══════════════════════════════════════════════════════════
+    // 分组一：拓扑编辑操作
+    // ═══════════════════════════════════════════════════════════
+    auto* editLabel = new QLabel("  拓扑编辑  ", this);
+    editLabel->setStyleSheet(
+        "color:#444444; font-size:10px; font-weight:700; "
+        "letter-spacing:1px; background:transparent; padding:0 4px;");
+    toolbar_->addWidget(editLabel);
 
     auto* rcBtn = new QToolButton();
-    rcBtn->setText("➕ 根复合体");
-    rcBtn->setToolTip("添加根复合体");
+    rcBtn->setText("+ RC");
+    rcBtn->setToolTip("添加根复合体 (Root Complex)");
     connect(rcBtn, &QToolButton::clicked, this, &TopologyEditorWidget::onAddRootComplex);
     toolbar_->addWidget(rcBtn);
 
     auto* swBtn = new QToolButton();
-    swBtn->setText("➕ CXL交换机");
-    swBtn->setToolTip("添加CXL交换机");
+    swBtn->setText("+ 交换机");
+    swBtn->setToolTip("添加 CXL 交换机");
     connect(swBtn, &QToolButton::clicked, this, &TopologyEditorWidget::onAddSwitch);
     toolbar_->addWidget(swBtn);
 
     auto* devBtn = new QToolButton();
-    devBtn->setText("➕ CXL设备");
-    devBtn->setToolTip("添加CXL内存设备");
+    devBtn->setText("+ CXL设备");
+    devBtn->setToolTip("添加 CXL 内存设备");
     connect(devBtn, &QToolButton::clicked, this, &TopologyEditorWidget::onAddCXLDevice);
     toolbar_->addWidget(devBtn);
 
-    toolbar_->addSeparator();
-
     auto* delBtn = new QToolButton();
-    delBtn->setText("✕ 删除");
-    delBtn->setToolTip("删除选中组件");
+    delBtn->setText("删除");
+    delBtn->setToolTip("删除选中的组件 (Del)");
     delBtn->setStyleSheet(
-        "QToolButton{background:#B71C1C;border-color:#EF9A9A;}"
-        "QToolButton:hover{background:#C62828;}");
+        "QToolButton{"
+        "  background:#1A0A0A; color:#F87171;"
+        "  border:1px solid #3A1A1A; border-radius:5px;"
+        "  padding:5px 11px; font-size:11px; min-width:44px;"
+        "}"
+        "QToolButton:hover{ background:#2A1010; border-color:#DC2626; color:#FCA5A5; }");
     connect(delBtn, &QToolButton::clicked, this, &TopologyEditorWidget::onDeleteSelected);
     toolbar_->addWidget(delBtn);
 
     auto* layoutBtn = new QToolButton();
-    layoutBtn->setText("⚡ 自动布局");
-    layoutBtn->setToolTip("自动排列组件");
+    layoutBtn->setText("自动布局");
+    layoutBtn->setToolTip("自动排列所有组件");
     connect(layoutBtn, &QToolButton::clicked, this, &TopologyEditorWidget::autoLayout);
     toolbar_->addWidget(layoutBtn);
 
-    toolbar_->addSeparator();
-
-    // 连接模式切换按钮
     auto* connectModeBtn = new QToolButton();
-    connectModeBtn->setText("🔗 连接模式");
+    connectModeBtn->setText("连接模式");
     connectModeBtn->setCheckable(true);
-    connectModeBtn->setToolTip("开启后点击两个节点即可连接");
+    connectModeBtn->setToolTip("开启后：点击起点节点，再点击终点节点，即可添加链路");
     connect(connectModeBtn, &QToolButton::toggled, this, [this](bool checked) {
         connectionMode_ = checked;
         if (!checked) {
@@ -220,33 +257,45 @@ void TopologyEditorWidget::setupToolBar() {
     toolbar_->addWidget(connectModeBtn);
 
     toolbar_->addSeparator();
-    
-    // ══════════════════════════════════════════════════════════
-    // 模拟控制按钮组
-    // ══════════════════════════════════════════════════════════
+
+    // ═══════════════════════════════════════════════════════════
+    // 分组二：模拟控制
+    // ═══════════════════════════════════════════════════════════
+    auto* simLabel = new QLabel("  模拟控制  ", this);
+    simLabel->setStyleSheet(
+        "color:#444444; font-size:10px; font-weight:700; "
+        "letter-spacing:1px; background:transparent; padding:0 4px;");
+    toolbar_->addWidget(simLabel);
+
     auto* startBtn = new QToolButton();
-    startBtn->setText("▶ 开始模拟");
-    startBtn->setToolTip("启动CXL内存模拟");
+    startBtn->setText("▶  开始模拟");
+    startBtn->setToolTip("启动 CXL 内存模拟  [F5]");
     startBtn->setStyleSheet(
-        "QToolButton{background:#0A3D2C;color:#6EE7B7;border:1px solid #166534;"
-        "border-radius:4px;padding:6px 12px;font-size:11px;font-weight:600;min-width:80px;}"
-        "QToolButton:hover{background:#14532D;border-color:#22C55E;}");
+        "QToolButton{"
+        "  background:#0A2E1C; color:#6EE7B7;"
+        "  border:1px solid #166534; border-radius:5px;"
+        "  padding:5px 14px; font-size:11px; font-weight:600; min-width:84px;"
+        "}"
+        "QToolButton:hover{ background:#0F3D25; border-color:#22C55E; color:#86EFAC; }");
     connect(startBtn, &QToolButton::clicked, this, &TopologyEditorWidget::startSimulationRequested);
     toolbar_->addWidget(startBtn);
-    
+
     auto* stopBtn = new QToolButton();
-    stopBtn->setText("■ 停止");
-    stopBtn->setToolTip("停止模拟");
+    stopBtn->setText("■  停止");
+    stopBtn->setToolTip("停止模拟  [F6]");
     stopBtn->setStyleSheet(
-        "QToolButton{background:#3D0A0A;color:#FCA5A5;border:1px solid #7F1D1D;"
-        "border-radius:4px;padding:6px 12px;font-size:11px;font-weight:600;min-width:60px;}"
-        "QToolButton:hover{background:#532D14;border-color:#DC2626;}");
+        "QToolButton{"
+        "  background:#1A0A0A; color:#FCA5A5;"
+        "  border:1px solid #7F1D1D; border-radius:5px;"
+        "  padding:5px 11px; font-size:11px; font-weight:600; min-width:60px;"
+        "}"
+        "QToolButton:hover{ background:#2A0F0F; border-color:#DC2626; }");
     connect(stopBtn, &QToolButton::clicked, this, &TopologyEditorWidget::stopSimulationRequested);
     toolbar_->addWidget(stopBtn);
-    
+
     auto* resetBtn = new QToolButton();
-    resetBtn->setText("↺ 重置");
-    resetBtn->setToolTip("重置模拟状态");
+    resetBtn->setText("↺  重置");
+    resetBtn->setToolTip("重置模拟统计数据");
     connect(resetBtn, &QToolButton::clicked, this, &TopologyEditorWidget::resetSimulationRequested);
     toolbar_->addWidget(resetBtn);
 

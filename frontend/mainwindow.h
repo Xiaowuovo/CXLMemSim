@@ -17,6 +17,7 @@
 #include "config_parser.h"
 #include "analyzer/timing_analyzer.h"
 #include "widgets/export_dialog.h"
+#include "widgets/export_page_widget.h"
 
 class TopologyEditorWidget;
 class ConfigTreeWidget;
@@ -79,6 +80,7 @@ private:
     BenchmarkPageWidget* benchmarkPage_;
     ExperimentPanelWidget* expPanel_;
     MetricsPanel* metricsPanel_;
+    ExportPageWidget* exportPage_;
     QTextEdit* logView_;
 
     // 状态标签（移到状态栏）
@@ -97,7 +99,7 @@ private:
     std::vector<cxlsim::EpochStats> epochHistory_;
     static const size_t MAX_HISTORY_SIZE = 100000;
     // 导出会话历史
-    QList<ExportDialog::SessionRecord> sessionHistory_;
+    QList<ExportPageWidget::SessionRecord> sessionHistory_;
 };
 
 #endif // MAINWINDOW_H

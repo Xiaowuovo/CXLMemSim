@@ -117,12 +117,17 @@ void MetricsPanel::setupUI() {
     epochLayout->addWidget(epochLabel);
     
     epochNumber_ = new QLCDNumber(this);
-    epochNumber_->setDigitCount(6);
+    epochNumber_->setDigitCount(7);
     epochNumber_->setSegmentStyle(QLCDNumber::Flat);
-    epochNumber_->setMaximumHeight(24);
+    epochNumber_->setMaximumHeight(22);
     epochNumber_->setStyleSheet(
-        "QLCDNumber { background: #111111; color: #4ADE80; border: 1px solid #222222; border-radius: 3px; }");
+        "QLCDNumber { background: #0A0A0A; color: #4ADE80; "
+        "border: 1px solid #1E1E1E; border-radius: 3px; padding: 1px 4px; }");
     epochLayout->addWidget(epochNumber_);
+
+    auto* epochUnit = new QLabel("epochs", this);
+    epochUnit->setStyleSheet("color: #444444; font-size: 10px; background:transparent;");
+    epochLayout->addWidget(epochUnit);
     epochLayout->addStretch();
     
     mainLayout->addWidget(epochFrame);
@@ -213,11 +218,11 @@ QGroupBox* MetricsPanel::createAccessGroup() {
 
     auto* tieringLayout = new QHBoxLayout();
     tieringLayout->setContentsMargins(0, 0, 0, 0);
-    auto* tieringLbl = new QLabel("DRAM vs CXL", this);
+    auto* tieringLbl = new QLabel("Local / CXL", this);
     tieringLbl->setStyleSheet("color: #888888; font-size: 10px; background: transparent; border: none; padding: 1px 0;");
     tieringLayout->addWidget(tieringLbl);
     
-    tieringRatio_ = new QLabel("0:0", this);
+    tieringRatio_ = new QLabel("0% / 100%", this);
     tieringRatio_->setStyleSheet("color: #10B981; font-size: 10px; font-weight: 600; background: transparent; padding: 1px 0;");
     tieringLayout->addWidget(tieringRatio_, 0, Qt::AlignRight);
     frameLayout->addLayout(tieringLayout);
@@ -261,7 +266,7 @@ QGroupBox* MetricsPanel::createAccessGroup() {
     missRate_->setFixedHeight(4);
     missRate_->setStyleSheet(
         "QProgressBar { background: #111111; border: none; border-radius: 2px; }"
-        "QProgressBar::chunk { background: #F87171; border-radius: 2px; }"
+        "QProgressBar::chunk { background: #F59E0B; border-radius: 2px; }"
     );
     rateLayout->addWidget(missRate_, 1, Qt::AlignVCenter);
     
@@ -376,14 +381,16 @@ void MetricsPanel::updateStats(const cxlsim::EpochStats& stats) {
     l3Misses_->setText(QString::number(stats.l3_misses));
     cxlAccesses_->setText(QString::number(stats.cxl_accesses));
 
-    // ── 内存层次化比例（科研关键）──
+    // ── 内存层次化比例（Local DRAM % / CXL %）──
     uint64_t localAccesses = stats.local_dram_accesses;
-    uint64_t cxlAccesses = stats.cxl_accesses;
-    if (localAccesses + cxlAccesses > 0) {
-        tieringRatio_->setText(QString("%1:%2")
-            .arg(localAccesses).arg(cxlAccesses));
+    uint64_t cxlAccesses   = stats.cxl_accesses;
+    uint64_t total = localAccesses + cxlAccesses;
+    if (total > 0) {
+        int localPct = (int)(100.0 * localAccesses / total);
+        int cxlPct   = 100 - localPct;
+        tieringRatio_->setText(QString("L %1%  /  CXL %2%").arg(localPct).arg(cxlPct));
     } else {
-        tieringRatio_->setText("0:0");
+        tieringRatio_->setText("L —  /  CXL —");
     }
 
     // ── 链路利用率 ──

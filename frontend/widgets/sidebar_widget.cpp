@@ -63,58 +63,11 @@ void SidebarWidget::setupUI() {
     buttonGroup_->addButton(benchBtn, BENCHMARK);
     mainLayout_->addWidget(benchBtn);
     
-    // ══════════════════════════════════════════════════════════
-    // 功能按钮组（快捷操作）- 导出数据
-    // ══════════════════════════════════════════════════════════
+    // 分隔线
     auto* divider1 = new QFrame(this);
     divider1->setFrameShape(QFrame::HLine);
     divider1->setStyleSheet("background: #1A1A1A; max-height: 1px; margin: 8px 8px;");
     mainLayout_->addWidget(divider1);
-    
-    auto* exportBtn = new QPushButton("⎘", this);
-    exportBtn->setToolTip("导出数据\nExport Data");
-    exportBtn->setFixedSize(48, 44);
-    exportBtn->setCursor(Qt::PointingHandCursor);
-    exportBtn->setStyleSheet(
-        "QPushButton {"
-        "    background: transparent;"
-        "    border: none;"
-        "    border-left: 2px solid transparent;"
-        "    border-radius: 6px;"
-        "    color: #666666;"
-        "    font-size: 22px;"
-        "    font-weight: 300;"
-        "    padding: 0;"
-        "    margin: 2px 0;"
-        "}"
-        "QPushButton:hover {"
-        "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, "
-        "        stop:0 rgba(79, 195, 247, 0.08), "
-        "        stop:1 rgba(79, 195, 247, 0.02));"
-        "    color: #EDEDED;"
-        "    border-left-color: #4FC3F7;"
-        "}"
-        "QPushButton:checked {"
-        "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, "
-        "        stop:0 rgba(79, 195, 247, 0.15), "
-        "        stop:1 rgba(79, 195, 247, 0.05));"
-        "    border-left: 2px solid #4FC3F7;"
-        "    color: #4FC3F7;"
-        "    font-weight: 500;"
-        "}"
-        "QPushButton:checked:hover {"
-        "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, "
-        "        stop:0 rgba(79, 195, 247, 0.20), "
-        "        stop:1 rgba(79, 195, 247, 0.08));"
-        "}");
-    connect(exportBtn, &QPushButton::clicked, this, &SidebarWidget::exportDataRequested);
-    mainLayout_->addWidget(exportBtn);
-    
-    // 分隔线
-    auto* divider2 = new QFrame(this);
-    divider2->setFrameShape(QFrame::HLine);
-    divider2->setStyleSheet("background: #1A1A1A; max-height: 1px; margin: 8px 8px;");
-    mainLayout_->addWidget(divider2);
     
     // ══════════════════════════════════════════════════════════
     // 分析分组 (ANALYSIS)
@@ -127,15 +80,18 @@ void SidebarWidget::setupUI() {
     );
     mainLayout_->addWidget(analysisLabel);
     
-    auto* expBtn = createIconButton("◈", "实验管理\nExperiments", EXPERIMENT);
-    auto* logBtn = createIconButton("◫", "运行日志\nLogs", LOG);
-    
-    buttonGroup_->addButton(expBtn, EXPERIMENT);
-    buttonGroup_->addButton(logBtn, LOG);
-    
+    auto* expBtn    = createIconButton("◈", "实验管理\nExperiments", EXPERIMENT);
+    auto* logBtn    = createIconButton("◫", "运行日志\nLogs",        LOG);
+    auto* exportBtn = createIconButton("⎘", "导出数据\nExport Data", EXPORT);
+
+    buttonGroup_->addButton(expBtn,    EXPERIMENT);
+    buttonGroup_->addButton(logBtn,    LOG);
+    buttonGroup_->addButton(exportBtn, EXPORT);
+
     mainLayout_->addWidget(expBtn);
     mainLayout_->addWidget(logBtn);
-    
+    mainLayout_->addWidget(exportBtn);
+
     mainLayout_->addStretch();
 
     // 默认选中拓扑编辑

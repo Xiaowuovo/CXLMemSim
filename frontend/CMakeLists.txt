@@ -25,6 +25,7 @@ set(FRONTEND_SOURCES
     widgets/benchmark_widget.cpp
     widgets/comparison_widget.cpp
     widgets/export_dialog.cpp
+    widgets/export_page_widget.cpp
     widgets/benchmark_page_widget.cpp
 )
 
@@ -41,6 +42,7 @@ set(FRONTEND_HEADERS
     widgets/benchmark_widget.h
     widgets/comparison_widget.h
     widgets/export_dialog.h
+    widgets/export_page_widget.h
     widgets/benchmark_page_widget.h
 )
 

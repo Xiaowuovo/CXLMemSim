@@ -12,6 +12,7 @@
 #include "widgets/benchmark_page_widget.h"
 #include "widgets/sidebar_widget.h"
 #include "widgets/export_dialog.h"
+#include "widgets/export_page_widget.h"
 #include "tracer/mock_tracer.h"
 #include <QStackedWidget>
 #include <QHBoxLayout>
@@ -51,6 +52,7 @@ MainWindow::MainWindow(QWidget *parent)
     , benchmarkPage_(nullptr)
     , expPanel_(nullptr)
     , metricsPanel_(nullptr)
+    , exportPage_(nullptr)
     , logView_(nullptr)
     , statusLabel_(nullptr)
     , analyzer_(nullptr)
@@ -455,6 +457,12 @@ void MainWindow::setupPages() {
     logLayout->addWidget(logView_);
     pageStack_->addWidget(logPage);
 
+    // ═══════════════════════════════════════════════════════════════
+    // 页面6: 导出数据
+    // ═══════════════════════════════════════════════════════════════
+    exportPage_ = new ExportPageWidget(this);
+    pageStack_->addWidget(exportPage_);
+
     // 添加页面堆叠到布局
     mainLayout->addWidget(pageStack_, 1);
 
@@ -469,7 +477,7 @@ void MainWindow::onPageChanged(int pageIndex) {
         pageStack_->setCurrentIndex(pageIndex);
         
         // 更新状态栏提示
-        QStringList pageNames = {"拓扑编辑", "系统配置", "负载配置", "基准测试", "实验管理", "运行日志"};
+        QStringList pageNames = {"拓扑编辑", "系统配置", "负载配置", "基准测试", "实验管理", "运行日志", "导出数据"};
         if (pageIndex >= 0 && pageIndex < pageNames.size()) {
             updateStatus(QString("当前页面: %1").arg(pageNames[pageIndex]));
         }
@@ -483,6 +491,30 @@ void MainWindow::createConnections() {
     if (sidebar_) {
         connect(sidebar_, &SidebarWidget::pageChanged, this, &MainWindow::onPageChanged);
         
+        // 导出页面切换：将数据注入页面
+        connect(sidebar_, &SidebarWidget::pageChanged, this, [this](int idx) {
+            if (idx == SidebarWidget::EXPORT && exportPage_) {
+                exportPage_->setEpochData(epochHistory_);
+                exportPage_->setSessionHistory(sessionHistory_);
+                // 配置快照
+                QJsonObject snap;
+                snap["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+                snap["total_epochs"] = static_cast<qint64>(epochHistory_.size());
+                QJsonDocument doc(snap);
+                exportPage_->setConfigData(doc.toJson(QJsonDocument::Indented));
+            }
+        });
+        connect(exportPage_, &ExportPageWidget::exportDone,
+                this, [this](const ExportPageWidget::SessionRecord& rec) {
+                    sessionHistory_.prepend(rec);
+                    if (sessionHistory_.size() > 50) sessionHistory_.removeLast();
+                    updateStatus(QString("✓ 已导出  [%1]  %2 epochs")
+                        .arg(rec.tag).arg(rec.epochCount));
+                    if (logView_) logView_->append(
+                        QString("[INFO] 📦 导出完成 tag=%1  epochs=%2")
+                        .arg(rec.tag).arg(rec.epochCount));
+                });
+
         // 侧边栏功能按钮
         connect(sidebar_, &SidebarWidget::pinBaselineRequested, this, [this]() {
             if (metricsPanel_) {
@@ -492,7 +524,6 @@ void MainWindow::createConnections() {
             }
         });
         
-        connect(sidebar_, &SidebarWidget::exportDataRequested, this, &MainWindow::onExportData);
     }
 
     // ── 配置树「应用配置」按钮 ──
@@ -1014,91 +1045,12 @@ void MainWindow::saveConfig(const QString& filename) {
 }
 
 void MainWindow::onExportData() {
-    if (epochHistory_.empty()) {
-        QMessageBox::information(this, "提示", 
-            "暂无历史数据。请先运行模拟并等待数据积累。\n\n"
-            "提示：模拟运行时会自动收集性能指标，最多保存10万个Epoch的数据。");
-        return;
+    // 切换到导出页面（侧边栏 EXPORT 按钮）
+    if (sidebar_) sidebar_->setActivePage(SidebarWidget::EXPORT);
+    if (pageStack_) pageStack_->setCurrentIndex(SidebarWidget::EXPORT);
+    if (exportPage_) {
+        exportPage_->setEpochData(epochHistory_);
+        exportPage_->setSessionHistory(sessionHistory_);
     }
-
-    // 创建导出对话框
-    ExportDialog dialog(this);
-    
-    // 设置数据
-    dialog.setEpochData(epochHistory_);
-    
-    // 生成配置快照JSON
-    QJsonObject configSnapshot;
-    configSnapshot["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
-    configSnapshot["total_epochs"] = static_cast<qint64>(epochHistory_.size());
-    
-    // 拓扑配置
-    if (topologyEditor_) {
-        auto cfg = topologyEditor_->getCurrentConfig();
-        QJsonObject topo;
-        topo["root_complex_id"] = QString::fromStdString(cfg.root_complex.id);
-        topo["cxl_device_count"] = static_cast<int>(cfg.cxl_devices.size());
-        
-        QJsonArray devices;
-        for (const auto& dev : cfg.cxl_devices) {
-            QJsonObject d;
-            d["id"] = QString::fromStdString(dev.id);
-            d["capacity_gb"] = static_cast<int>(dev.capacity_gb);
-            d["bandwidth_gbps"] = dev.bandwidth_gbps;
-            d["base_latency_ns"] = dev.base_latency_ns;
-            devices.append(d);
-        }
-        topo["cxl_devices"] = devices;
-        configSnapshot["topology"] = topo;
-    }
-    
-    // 负载配置
-    if (workloadWidget_) {
-        QJsonObject workload;
-        auto wlCfg = workloadWidget_->getWorkloadConfig();
-        workload["mode"] = wlCfg.trace_driven ? "trace" : "synthetic";
-        workload["trace_file"] = QString::fromStdString(wlCfg.trace_file_path);
-        workload["read_ratio"] = wlCfg.read_ratio;
-        workload["write_ratio"] = 1.0 - wlCfg.read_ratio;
-        workload["injection_rate_gbps"] = wlCfg.injection_rate_gbps;
-        workload["working_set_gb"] = static_cast<qint64>(wlCfg.working_set_gb);
-        workload["stride_bytes"] = wlCfg.stride_bytes;
-        workload["duration_sec"] = wlCfg.duration_sec;
-        workload["num_threads"] = wlCfg.num_threads;
-        configSnapshot["workload"] = workload;
-    }
-    
-    // 统计摘要
-    if (!epochHistory_.empty()) {
-        const auto& latest = epochHistory_.back();
-        QJsonObject summary;
-        summary["latest_epoch"] = static_cast<qint64>(latest.epoch_number);
-        summary["avg_latency_ns"] = latest.avg_latency_ns;
-        summary["p95_latency_ns"] = latest.p95_latency_ns;
-        summary["p99_latency_ns"] = latest.p99_latency_ns;
-        summary["total_accesses"] = static_cast<qint64>(latest.total_accesses);
-        summary["cxl_accesses"] = static_cast<qint64>(latest.cxl_accesses);
-        summary["local_dram_accesses"] = static_cast<qint64>(latest.local_dram_accesses);
-        configSnapshot["summary"] = summary;
-    }
-    
-    QJsonDocument doc(configSnapshot);
-    dialog.setConfigData(doc.toJson(QJsonDocument::Indented));
-
-    // 传入已有的会话历史
-    dialog.setSessionHistory(sessionHistory_);
-
-    // 导出完成后更新会话历史
-    connect(&dialog, &ExportDialog::exportDone,
-            this, [this](const ExportDialog::SessionRecord& rec) {
-                sessionHistory_.prepend(rec);
-                if (sessionHistory_.size() > 50) sessionHistory_.removeLast();
-                updateStatus(QString("✓ 已导出  [%1]  %2 epochs")
-                    .arg(rec.tag).arg(rec.epochCount));
-                if (logView_) logView_->append(
-                    QString("[INFO] 📦 导出完成 tag=%1  epochs=%2  lat=%.1f ns")
-                    .arg(rec.tag).arg(rec.epochCount).arg(rec.avgLatencyNs));
-            });
-
-    dialog.exec();
 }
+

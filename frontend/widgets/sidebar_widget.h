@@ -20,7 +20,8 @@ public:
         WORKLOAD,        // 负载配置
         BENCHMARK,       // 基准测试
         EXPERIMENT,      // 实验管理
-        LOG              // 运行日志
+        LOG,             // 运行日志
+        EXPORT           // 导出数据
     };
 
     explicit SidebarWidget(QWidget *parent = nullptr);
@@ -31,11 +32,8 @@ public:
 
 signals:
     void pageChanged(int pageIndex);
-    
-    // 功能按钮信号
     void pinBaselineRequested();
     void clearBaselineRequested();
-    void exportDataRequested();
 
 private:
     void setupUI();
