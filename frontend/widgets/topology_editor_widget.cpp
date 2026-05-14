@@ -663,8 +663,8 @@ ComponentItem::ComponentItem(const QString& id, ComponentType type, TopologyEdit
 }
 
 QRectF ComponentItem::boundingRect() const {
-    // 若有实时指标，向下扩展26px
-    double extraH = metrics_.active ? 26.0 : 0.0;
+    // 若有实时指标，向下扩展32px（标签行11px + 进度条5px + 上下边距）
+    double extraH = metrics_.active ? 32.0 : 0.0;
     return QRectF(-90, -50, 180, 100 + extraH);
 }
 
@@ -749,45 +749,89 @@ void ComponentItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt
 
     // ── 实时指标覆盖层 ─────────────────────────────────────────────
     if (metrics_.active) {
-        // 卡片主体固定高度 100px: top=-50, bottom=50
+        // 指标条背景（32px高：10px标签行 + 5px间距 + 7px进度条 + 4px边距）
         const double cardBottom = cardRect.bottom(); // = 50
-        QRectF metricsRect(cardRect.left(), cardBottom, cardRect.width(), 26);
-        painter->setBrush(QColor(0x05, 0x05, 0x05, 230));
-        painter->setPen(QPen(accentColor.darker(150), 1));
+        QRectF metricsRect(cardRect.left(), cardBottom, cardRect.width(), 32);
+        painter->setBrush(QColor(0x05, 0x05, 0x05, 240));
+        painter->setPen(QPen(QColor(0x22, 0x22, 0x22), 1));
         painter->drawRoundedRect(metricsRect, 4, 4);
 
-        QFont mf("JetBrains Mono, Consolas", 7);
+        // 三列均等布局：各60px，含8px内边距
+        const double colW   = 60.0;
+        const double col1X  = cardRect.left() + 0;
+        const double col2X  = cardRect.left() + 60;
+        const double col3X  = cardRect.left() + 120;
+        const double textY  = cardBottom + 3;
+        const double textH  = 11;
+
+        QFont mf;
+        mf.setFamily("JetBrains Mono");
+        mf.setPixelSize(9);
         painter->setFont(mf);
 
-        // 延迟
+        // ── 列1：延迟 ──────────────────────────────────────────
         if (metrics_.latency_ns >= 0) {
-            painter->setPen(QColor(0xF9, 0x73, 0x16));
-            painter->drawText(QRectF(cardRect.left() + 4, cardBottom + 2, 56, 11),
-                              Qt::AlignLeft, QString("%1ns").arg(metrics_.latency_ns, 0, 'f', 0));
+            QColor latColor = metrics_.latency_ns > 300 ? QColor(0xEF, 0x44, 0x44)
+                            : metrics_.latency_ns > 150 ? QColor(0xFB, 0xBF, 0x24)
+                            : QColor(0x4A, 0xDE, 0x80);
+            // 标签
+            painter->setPen(QColor(0x55, 0x55, 0x55));
+            painter->drawText(QRectF(col1X + 3, textY, colW - 3, textH),
+                              Qt::AlignLeft, "lat");
+            // 值
+            painter->setPen(latColor);
+            QString latStr = metrics_.latency_ns >= 1000
+                ? QString("%1µs").arg(metrics_.latency_ns / 1000.0, 0, 'f', 1)
+                : QString("%1ns").arg(metrics_.latency_ns, 0, 'f', 0);
+            painter->drawText(QRectF(col1X + 3, textY, colW - 3, textH),
+                              Qt::AlignRight, latStr);
         }
-        // 带宽
+
+        // ── 列2：带宽 ──────────────────────────────────────────
         if (metrics_.bandwidth_gbps >= 0) {
+            // 标签
+            painter->setPen(QColor(0x55, 0x55, 0x55));
+            painter->drawText(QRectF(col2X + 3, textY, colW - 6, textH),
+                              Qt::AlignLeft, "bw");
+            // 值
             painter->setPen(QColor(0x22, 0xC5, 0x5E));
-            painter->drawText(QRectF(cardRect.left() + 62, cardBottom + 2, 56, 11),
-                              Qt::AlignCenter, QString("%1GB/s").arg(metrics_.bandwidth_gbps, 0, 'f', 1));
+            QString bwStr = metrics_.bandwidth_gbps >= 1.0
+                ? QString("%1GB/s").arg(metrics_.bandwidth_gbps, 0, 'f', 1)
+                : QString("%1MB/s").arg(metrics_.bandwidth_gbps * 1024.0, 0, 'f', 0);
+            painter->drawText(QRectF(col2X + 3, textY, colW - 6, textH),
+                              Qt::AlignRight, bwStr);
         }
-        // 负载百分比 + 进度条
+
+        // ── 列3：利用率 ─────────────────────────────────────────
         if (metrics_.load_pct >= 0) {
             QColor loadColor = metrics_.load_pct > 80 ? QColor(0xEF, 0x44, 0x44)
                              : metrics_.load_pct > 50 ? QColor(0xFB, 0xBF, 0x24)
                              : QColor(0x22, 0xC5, 0x5E);
+            // 标签
+            painter->setPen(QColor(0x55, 0x55, 0x55));
+            painter->drawText(QRectF(col3X + 3, textY, colW - 6, textH),
+                              Qt::AlignLeft, "util");
+            // 值
             painter->setPen(loadColor);
-            painter->drawText(QRectF(cardRect.right() - 46, cardBottom + 2, 42, 11),
+            painter->drawText(QRectF(col3X + 3, textY, colW - 6, textH),
                               Qt::AlignRight, QString("%1%").arg(metrics_.load_pct, 0, 'f', 0));
+        }
 
-            QRectF barBg(cardRect.left() + 4, cardBottom + 15, cardRect.width() - 8, 6);
+        // ── 全宽进度条（只在 load_pct > 0 时渲染）──────────────
+        if (metrics_.load_pct > 0) {
+            QColor loadColor = metrics_.load_pct > 80 ? QColor(0xEF, 0x44, 0x44)
+                             : metrics_.load_pct > 50 ? QColor(0xFB, 0xBF, 0x24)
+                             : QColor(0x22, 0xC5, 0x5E);
+            QRectF barBg(cardRect.left() + 4, cardBottom + 18, cardRect.width() - 8, 5);
             painter->setPen(Qt::NoPen);
-            painter->setBrush(QColor(0x22, 0x22, 0x22));
-            painter->drawRoundedRect(barBg, 3, 3);
-            QRectF barFg(barBg.left(), barBg.top(),
-                         barBg.width() * metrics_.load_pct / 100.0, barBg.height());
-            painter->setBrush(loadColor);
-            painter->drawRoundedRect(barFg, 3, 3);
+            painter->setBrush(QColor(0x1A, 0x1A, 0x1A));
+            painter->drawRoundedRect(barBg, 2, 2);
+            double frac = std::min(metrics_.load_pct / 100.0, 1.0);
+            QRectF barFg(barBg.left(), barBg.top(), barBg.width() * frac, barBg.height());
+            if (barFg.width() > 0) {
+                painter->setBrush(loadColor);
+                painter->drawRoundedRect(barFg, 2, 2);
+            }
         }
     }
 }
@@ -880,54 +924,67 @@ void LinkItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, 
     painter->setBrush(lineColor);
     painter->drawPolygon(arrowHead);
 
-    // 悬浮式胶囊标签 (Pill Badge) - 双行显示
+    // ── 悬浮胶囊标签（双行：静态配置 + 实时利用率）─────────────
     if (bandwidth_gbps_ > 0) {
         QPointF midPoint = (p1 + p2) / 2;
-        
-        // 第一行：物理配置（静态）
-        QString configLine = QString("%1 GB/s • %2 ns")
+
+        // 统一字体：JetBrains Mono 像素字体，避免两行字体大小差异产生错位感
+        QFont labelFont;
+        labelFont.setFamily("JetBrains Mono");
+        labelFont.setPixelSize(9);
+        QFont utilizFont;
+        utilizFont.setFamily("JetBrains Mono");
+        utilizFont.setPixelSize(10);
+        utilizFont.setBold(true);
+
+        QFontMetrics fm1(labelFont);
+        QFontMetrics fm2(utilizFont);
+
+        // 第一行：物理配置（缩写更紧凑）
+        QString configLine = QString("%1 GB/s  %2 ns")
             .arg(bandwidth_gbps_, 0, 'f', 0).arg(latency_ns_, 0, 'f', 0);
-        
-        // 第二行：实时利用率（动态）
-        QString utilizLine = utilization_pct_ > 0
-            ? QString("▸ %1%").arg(utilization_pct_, 0, 'f', 0)
-            : QString("idle");
-        
-        QFont configFont("JetBrains Mono, Consolas", 7);
-        QFont utilizFont("Inter, -apple-system", 9, QFont::Bold);
-        
-        QFontMetrics configFm(configFont);
-        QFontMetrics utilizFm(utilizFont);
-        
-        int w1 = configFm.horizontalAdvance(configLine);
-        int w2 = utilizFm.horizontalAdvance(utilizLine);
-        int maxWidth = std::max(w1, w2);
-        int totalHeight = configFm.height() + utilizFm.height() + 4;
-        
-        QRectF labelRect(-maxWidth/2 - 10, -totalHeight/2 - 4, maxWidth + 20, totalHeight + 8);
+
+        // 第二行：实时利用率（统一用数字格式，空闲时显示"—"而非"idle"）
+        QColor utilizColor;
+        QString utilizLine;
+        if (utilization_pct_ > 0) {
+            utilizColor = utilization_pct_ > 80 ? QColor(0xEF, 0x44, 0x44)
+                        : utilization_pct_ > 50 ? QColor(0xFB, 0xBF, 0x24)
+                        : QColor(0x22, 0xC5, 0x5E);
+            utilizLine = QString("util  %1%").arg(utilization_pct_, 0, 'f', 0);
+        } else {
+            utilizColor = QColor(0x3A, 0x3A, 0x3A);
+            utilizLine = "util  —";
+        }
+
+        int w1 = fm1.horizontalAdvance(configLine);
+        int w2 = fm2.horizontalAdvance(utilizLine);
+        int maxWidth = std::max(w1, w2) + 4;
+        int rowH1 = fm1.height();
+        int rowH2 = fm2.height();
+        int totalH = rowH1 + rowH2 + 6;
+
+        QRectF labelRect(0, 0, maxWidth + 16, totalH + 6);
         labelRect.moveCenter(midPoint);
-        
-        // 毛玻璃质感底色
-        painter->setPen(QPen(QColor(0x33, 0x33, 0x33), 1));
-        painter->setBrush(QColor(0x0A, 0x0A, 0x0A, 220));
-        painter->drawRoundedRect(labelRect, labelRect.height()/2.5, labelRect.height()/2.5);
-        
-        // 绘制第一行：配置参数（灰色小字）
-        painter->setFont(configFont);
-        painter->setPen(QColor(0x66, 0x66, 0x66));
-        QRectF line1Rect(labelRect.left(), labelRect.top() + 4, labelRect.width(), configFm.height());
-        painter->drawText(line1Rect, Qt::AlignCenter, configLine);
-        
-        // 绘制第二行：实时利用率（彩色粗体）
+
+        // 胶囊背景
+        painter->setPen(QPen(QColor(0x2A, 0x2A, 0x2A), 1));
+        painter->setBrush(QColor(0x08, 0x08, 0x08, 230));
+        painter->drawRoundedRect(labelRect, 5, 5);
+
+        // 第一行：配置参数（暗灰）
+        painter->setFont(labelFont);
+        painter->setPen(QColor(0x55, 0x55, 0x55));
+        painter->drawText(
+            QRectF(labelRect.left(), labelRect.top() + 3, labelRect.width(), rowH1),
+            Qt::AlignCenter, configLine);
+
+        // 第二行：实时利用率（颜色编码）
         painter->setFont(utilizFont);
-        QColor utilizColor = utilization_pct_ > 80 ? QColor(0xEF, 0x44, 0x44)  // 红色-拥塞
-                           : utilization_pct_ > 50 ? QColor(0xFB, 0xBF, 0x24)  // 黄色-中等
-                           : utilization_pct_ > 0  ? QColor(0x22, 0xC5, 0x5E)  // 绿色-正常
-                           : QColor(0x44, 0x44, 0x44);                          // 灰色-空闲
         painter->setPen(active ? QColor(0x60, 0xA5, 0xFA) : utilizColor);
-        QRectF line2Rect(labelRect.left(), labelRect.top() + configFm.height() + 4, 
-                         labelRect.width(), utilizFm.height());
-        painter->drawText(line2Rect, Qt::AlignCenter, utilizLine);
+        painter->drawText(
+            QRectF(labelRect.left(), labelRect.top() + 3 + rowH1 + 2, labelRect.width(), rowH2),
+            Qt::AlignCenter, utilizLine);
     }
 }
 

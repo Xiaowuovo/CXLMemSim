@@ -957,46 +957,45 @@ void MainWindow::updateMetrics() {
     if (topologyEditor_) {
         auto cfg = topologyEditor_->getCurrentConfig();
 
-        // Root Complex 节点显示整体访问延迟/带宽
+        // 预计算全局流量指标（避免在循环内重复计算）
+        // 实际 CXL 总吞吐：accesses × 64B cacheline / epoch时长(10ms)
+        const double epochSec          = 0.01;  // 10ms per epoch
+        const double totalCxlTrafficGb = (stats.cxl_accesses * 64.0) / 1e9 / epochSec;
+        const int    numDevices        = static_cast<int>(cfg.cxl_devices.size());
+
+        // Root Complex 节点：显示整体延迟 + 总出口带宽 + CXL访问占比
         if (!cfg.root_complex.id.empty()) {
             DeviceMetrics m;
-            m.active        = true;
-            m.latency_ns    = stats.avg_latency_ns;
-            // 带宽估算：CXL访问次数 × 64B cache line / 1秒
-            double cxl_bw = cfg.cxl_devices.empty() ? 64.0
-                            : cfg.cxl_devices[0].bandwidth_gbps;
-            m.bandwidth_gbps = (stats.cxl_accesses > 0)
-                ? std::min(cxl_bw, 64.0 * stats.cxl_accesses / 1e9)
-                : 0.0;
+            m.active         = true;
+            m.latency_ns     = stats.avg_latency_ns;
+            m.bandwidth_gbps = totalCxlTrafficGb;
+            // load_pct = CXL访问占总访问的比例（真实的CXL压力指标）
             m.load_pct = (stats.total_accesses > 0)
-                ? std::min(100.0, 100.0 * stats.cxl_accesses / stats.total_accesses * 3.0)
+                ? std::min(100.0, 100.0 * stats.cxl_accesses / stats.total_accesses)
                 : 0.0;
             topologyEditor_->updateDeviceMetrics(
                 QString::fromStdString(cfg.root_complex.id), m);
         }
 
-        // CXL 设备节点显示 CXL 专项指标
+        // CXL 设备节点：流量均摊到各设备
         for (size_t i = 0; i < cfg.cxl_devices.size(); ++i) {
             DeviceMetrics dm;
             dm.active         = true;
-            double idx = static_cast<double>(i);
-            dm.latency_ns     = stats.avg_latency_ns * (1.0 + 0.1 * idx);
-            dm.bandwidth_gbps = cfg.cxl_devices[i].bandwidth_gbps
-                                * (stats.cxl_accesses > 0 ? 0.7 : 0.0);
-            dm.load_pct       = (stats.cxl_accesses > 0)
-                ? std::min(100.0, 60.0 + 10.0 * idx)
+            // 延迟：从仿真引擎取的平均延迟（若引擎未区分设备，暂用全局值）
+            dm.latency_ns     = stats.avg_latency_ns;
+            // 带宽：总流量均摊（后续仿真引擎可按 device_id 分发时替换）
+            double perDevTrafficGb = (numDevices > 0) ? totalCxlTrafficGb / numDevices : 0.0;
+            dm.bandwidth_gbps = perDevTrafficGb;
+            // 利用率 = 实际流量 / 设备物理带宽上限
+            double physBw = cfg.cxl_devices[i].bandwidth_gbps;
+            dm.load_pct   = (physBw > 0 && perDevTrafficGb > 0)
+                ? std::min(100.0, (perDevTrafficGb / physBw) * 100.0)
                 : 0.0;
             topologyEditor_->updateDeviceMetrics(
                 QString::fromStdString(cfg.cxl_devices[i].id), dm);
             
-            // 推送链路实时利用率（RC -> CXL设备 或 SW -> CXL设备）
-            // 利用率 = (实际流量 / 物理带宽) * 100%
-            // 实际流量估算：cxl_accesses * 64B cacheline / 1秒，分摊到各设备
-            double actualTrafficGbps = (stats.cxl_accesses > 0)
-                ? (64.0 * stats.cxl_accesses / 1e9) / cfg.cxl_devices.size()
-                : 0.0;
-            double linkUtilPct = std::min(100.0, 
-                (actualTrafficGbps / cfg.cxl_devices[i].bandwidth_gbps) * 100.0);
+            // 链路利用率与节点 load_pct 共用同一计算结果
+            double linkUtilPct = dm.load_pct;
             
             // 链路可能是 RC -> CXL 或 SW -> CXL，尝试两者
             if (!cfg.root_complex.id.empty()) {
@@ -1011,6 +1010,28 @@ void MainWindow::updateMetrics() {
                     QString::fromStdString(cfg.switches[0].id),
                     QString::fromStdString(cfg.cxl_devices[i].id),
                     linkUtilPct);
+            }
+        }
+
+        // Switch 节点：显示转发延迟 + 汇总带宽 + 端口利用率
+        for (const auto& sw : cfg.switches) {
+            DeviceMetrics sm;
+            sm.active         = true;
+            sm.latency_ns     = sw.latency_ns;      // 交换机转发固定延迟（通常 15~30 ns）
+            sm.bandwidth_gbps = totalCxlTrafficGb;  // 通过交换机的总流量
+            // 端口利用率：总流量 / (端口数 × 每端口带宽)
+            double swMaxBw = sw.num_ports * 64.0;   // 假设每端口 64 GB/s (PCIe5 x16)
+            sm.load_pct = (swMaxBw > 0 && totalCxlTrafficGb > 0)
+                ? std::min(100.0, (totalCxlTrafficGb / swMaxBw) * 100.0)
+                : 0.0;
+            topologyEditor_->updateDeviceMetrics(
+                QString::fromStdString(sw.id), sm);
+            // RC -> SW 链路利用率
+            if (!cfg.root_complex.id.empty()) {
+                topologyEditor_->updateLinkUtilization(
+                    QString::fromStdString(cfg.root_complex.id),
+                    QString::fromStdString(sw.id),
+                    sm.load_pct);
             }
         }
     }

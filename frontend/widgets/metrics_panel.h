@@ -9,7 +9,6 @@
 #include <QWidget>
 #include <QLabel>
 #include <QProgressBar>
-#include <QLCDNumber>
 #include <QGroupBox>
 #include <QTabWidget>
 #include "analyzer/timing_analyzer.h"
@@ -35,7 +34,7 @@ private:
     void setupUI();
 
     // Display widgets
-    QLCDNumber* epochNumber_;
+    QLabel* epochNumber_;
     QLabel* bandwidthDisplay_;     ///< 实时带宽数字仪表盘
     QLabel* latencyDisplay_;       ///< 实时延迟数字仪表盘
     QLabel* totalAccesses_;

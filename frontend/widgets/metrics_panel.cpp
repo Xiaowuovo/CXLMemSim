@@ -9,7 +9,6 @@
 #include <QFormLayout>
 #include <QLabel>
 #include <QFrame>
-
 // ── 辅助函数：创建指标数值标签 ─────────────────────────────────────────────
 static QLabel* makeValueLabel(QWidget* parent, const QString& color = "#EDEDED") {
     auto* lbl = new QLabel("0", parent);
@@ -116,13 +115,15 @@ void MetricsPanel::setupUI() {
     epochLabel->setStyleSheet("color: #666666; font-size: 11px;");
     epochLayout->addWidget(epochLabel);
     
-    epochNumber_ = new QLCDNumber(this);
-    epochNumber_->setDigitCount(7);
-    epochNumber_->setSegmentStyle(QLCDNumber::Flat);
-    epochNumber_->setMaximumHeight(22);
+    epochNumber_ = new QLabel("0", this);
     epochNumber_->setStyleSheet(
-        "QLCDNumber { background: #0A0A0A; color: #4ADE80; "
-        "border: 1px solid #1E1E1E; border-radius: 3px; padding: 1px 4px; }");
+        "QLabel { background: #0A0A0A; color: #4ADE80; "
+        "border: 1px solid #1E1E1E; border-radius: 3px; "
+        "padding: 1px 8px; font-size: 14px; font-weight: 700; "
+        "font-family: 'JetBrains Mono', 'Consolas', monospace; }");
+    epochNumber_->setFixedHeight(24);
+    epochNumber_->setMinimumWidth(60);
+    epochNumber_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     epochLayout->addWidget(epochNumber_);
 
     auto* epochUnit = new QLabel("epochs", this);
@@ -144,31 +145,7 @@ void MetricsPanel::setupUI() {
 }
 
 QGroupBox* MetricsPanel::createEpochGroup() {
-    auto* group = new QGroupBox("CURRENT EPOCH", this);
-    group->setStyleSheet(
-        "QGroupBox { color: #888888; font-size: 11px; font-weight: bold; letter-spacing: 1px; border: none; padding-top: 16px; }"
-        "QGroupBox::title { subcontrol-origin: margin; left: 0px; padding: 0px; }"
-    );
-    auto* layout = new QHBoxLayout(group);
-    layout->setContentsMargins(0, 8, 0, 0);
-    layout->setSpacing(12);
-
-    epochNumber_ = new QLCDNumber(this);
-    epochNumber_->setDigitCount(6);
-    epochNumber_->setSegmentStyle(QLCDNumber::Flat);
-    epochNumber_->display(0);
-    epochNumber_->setFixedHeight(44);
-    epochNumber_->setStyleSheet(
-        "QLCDNumber { background: #0A0A0A; color: #EDEDED; "
-        "border: 1px solid #222222; border-radius: 6px; padding: 4px; }"
-    );
-    layout->addWidget(epochNumber_, 1);
-
-    auto* unitLabel = new QLabel("EPOCH", this);
-    unitLabel->setStyleSheet("color: #666666; font-size: 10px; font-weight: bold; letter-spacing: 1px;");
-    layout->addWidget(unitLabel, 0, Qt::AlignBottom);
-    
-    return group;
+    return new QGroupBox(this); // deprecated, epoch row is inline in setupUI
 }
 
 QGroupBox* MetricsPanel::createAccessGroup() {
@@ -367,7 +344,7 @@ void MetricsPanel::updateStats(const cxlsim::EpochStats& stats) {
     // 保存当前统计数据用于对比
     currentStats_ = stats;
     
-    epochNumber_->display(static_cast<int>(stats.epoch_number));
+    epochNumber_->setText(QString::number(stats.epoch_number));
 
     // ── 科研关键：实时带宽和延迟仪表盘 ──
     double bw = 0.0;
@@ -430,7 +407,7 @@ void MetricsPanel::updateStats(const cxlsim::EpochStats& stats) {
 }
 
 void MetricsPanel::reset() {
-    epochNumber_->display(0);
+    epochNumber_->setText("0");
     totalAccesses_->setText("0");
     l3Misses_->setText("0");
     cxlAccesses_->setText("0");
