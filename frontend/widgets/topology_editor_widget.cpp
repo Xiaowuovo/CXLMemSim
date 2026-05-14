@@ -20,6 +20,7 @@
 #include <QLabel>
 #include <QKeyEvent>
 #include <cmath>
+#include <unordered_map>
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ZoomableGraphicsView
@@ -328,7 +329,14 @@ void TopologyEditorWidget::updateTopology(const cxlsim::CXLSimConfig& config) {
         scene_->addItem(item);
         components_[QString::fromStdString(sw.id)] = item;
         swIdx++;
-        switchCounter_++;
+        // 确保新增时不与现有 id 冲突：取最大编号+1
+        QString swId = QString::fromStdString(sw.id);
+        if (swId.startsWith("SW")) {
+            int num = swId.mid(2).toInt();
+            if (num >= switchCounter_) switchCounter_ = num + 1;
+        } else {
+            switchCounter_++;
+        }
     }
 
     int devIdx = 0;
@@ -341,7 +349,14 @@ void TopologyEditorWidget::updateTopology(const cxlsim::CXLSimConfig& config) {
         scene_->addItem(item);
         components_[QString::fromStdString(dev.id)] = item;
         devIdx++;
-        deviceCounter_++;
+        // 确保新增时不与现有 id 冲突
+        QString devId = QString::fromStdString(dev.id);
+        if (devId.startsWith("CXL_MEM")) {
+            int num = devId.mid(7).toInt();
+            if (num >= deviceCounter_) deviceCounter_ = num + 1;
+        } else {
+            deviceCounter_++;
+        }
     }
 
     for (const auto& conn : config.connections) {
@@ -396,14 +411,12 @@ void TopologyEditorWidget::onAddRootComplex() {
 }
 
 void TopologyEditorWidget::onAddSwitch() {
-    QString id = QString("SW%1").arg(switchCounter_++);
-    addComponent(ComponentItem::Switch, QPointF(-100 + switchCounter_ * 80, 0));
+    addComponent(ComponentItem::Switch, QPointF(-100 + (switchCounter_ + 1) * 80, 0));
     emit topologyModified();
 }
 
 void TopologyEditorWidget::onAddCXLDevice() {
-    QString id = QString("CXL_MEM%1").arg(deviceCounter_++);
-    addComponent(ComponentItem::CXLDevice, QPointF(-150 + deviceCounter_ * 100, 220));
+    addComponent(ComponentItem::CXLDevice, QPointF(-150 + (deviceCounter_ + 1) * 100, 220));
     emit topologyModified();
 }
 
@@ -411,8 +424,8 @@ void TopologyEditorWidget::addComponent(ComponentItem::ComponentType type, const
     QString id;
     switch (type) {
         case ComponentItem::RootComplex: id = "RC0"; break;
-        case ComponentItem::Switch:       id = QString("SW%1").arg(switchCounter_); break;
-        case ComponentItem::CXLDevice:    id = QString("CXL_MEM%1").arg(deviceCounter_); break;
+        case ComponentItem::Switch:       id = QString("SW%1").arg(switchCounter_++); break;
+        case ComponentItem::CXLDevice:    id = QString("CXL_MEM%1").arg(deviceCounter_++); break;
     }
     
     auto* item = new ComponentItem(id, type, this);
@@ -538,39 +551,76 @@ void TopologyEditorWidget::autoLayout() {
 }
 
 cxlsim::CXLSimConfig TopologyEditorWidget::getCurrentConfig() const {
-    // 以 cachedConfig_ 为基准（含所有真实参数），仅用当前 scene 更新结构
-    cxlsim::CXLSimConfig config = cachedConfig_;
+    // 始终以当前 scene 的 components_/links_ 为权威结构来源
+    // 用 cachedConfig_ 中同ID节点的参数填充，新增节点使用合理默认值
+    cxlsim::CXLSimConfig config;
+    config.name       = cachedConfig_.name.empty() ? "GUI_Generated_Topology" : cachedConfig_.name;
+    config.simulation = cachedConfig_.simulation;
+    config.workload   = cachedConfig_.workload;
 
-    // 若 cachedConfig_ 为空（尚未调用过 updateTopology），则从 scene 重建
-    if (config.root_complex.id.empty() && config.switches.empty() && config.cxl_devices.empty()) {
-        config.name = "GUI_Generated_Topology";
-        for (auto* comp : components_) {
-            if (comp->componentType() == ComponentItem::RootComplex) {
-                config.root_complex.id = comp->id().toStdString();
-                config.root_complex.local_dram_size_gb = 64;
-            } else if (comp->componentType() == ComponentItem::Switch) {
-                cxlsim::SwitchConfig sw;
-                sw.id         = comp->id().toStdString();
+    // 建立 cachedConfig_ 的查找表，key = id
+    std::unordered_map<std::string, const cxlsim::SwitchConfig*>    cachedSW;
+    std::unordered_map<std::string, const cxlsim::CXLDeviceConfig*> cachedDev;
+    for (const auto& sw  : cachedConfig_.switches)     cachedSW[sw.id]   = &sw;
+    for (const auto& dev : cachedConfig_.cxl_devices)  cachedDev[dev.id] = &dev;
+
+    for (auto* comp : components_) {
+        std::string sid = comp->id().toStdString();
+
+        if (comp->componentType() == ComponentItem::RootComplex) {
+            config.root_complex.id = sid;
+            config.root_complex.local_dram_size_gb =
+                cachedConfig_.root_complex.local_dram_size_gb > 0
+                ? cachedConfig_.root_complex.local_dram_size_gb : 64;
+
+        } else if (comp->componentType() == ComponentItem::Switch) {
+            cxlsim::SwitchConfig sw;
+            if (cachedSW.count(sid)) {
+                sw = *cachedSW.at(sid);   // 用已有参数
+            } else {
+                sw.id         = sid;
                 sw.num_ports  = 8;
                 sw.latency_ns = 40.0;
-                config.switches.push_back(sw);
-            } else if (comp->componentType() == ComponentItem::CXLDevice) {
-                cxlsim::CXLDeviceConfig dev;
-                dev.id              = comp->id().toStdString();
+            }
+            sw.id = sid;   // 保证 ID 与 scene 一致
+            config.switches.push_back(sw);
+
+        } else if (comp->componentType() == ComponentItem::CXLDevice) {
+            cxlsim::CXLDeviceConfig dev;
+            if (cachedDev.count(sid)) {
+                dev = *cachedDev.at(sid); // 用已有参数
+            } else {
+                dev.id              = sid;
                 dev.type            = "Type3";
+                dev.link_gen        = "Gen5";
+                dev.link_width      = "x16";
                 dev.capacity_gb     = 128;
                 dev.bandwidth_gbps  = 64.0;
                 dev.base_latency_ns = 170.0;
-                config.cxl_devices.push_back(dev);
+            }
+            dev.id = sid;
+            config.cxl_devices.push_back(dev);
+        }
+    }
+
+    // 重建连接（从 links_ scene 对象）
+    for (auto* link : links_) {
+        if (!link->fromComponent() || !link->toComponent()) continue;
+        std::string fromId = link->fromComponent()->id().toStdString();
+        std::string toId   = link->toComponent()->id().toStdString();
+        // 查找 cachedConfig_ 中已有的 conn 参数
+        std::string linkStr = "PCIe5.0-x16";
+        for (const auto& conn : cachedConfig_.connections) {
+            if (conn.from == fromId && conn.to == toId) {
+                linkStr = conn.link;
+                break;
             }
         }
-        for (auto* link : links_) {
-            cxlsim::ConnectionConfig conn;
-            conn.from = link->fromComponent()->id().toStdString();
-            conn.to   = link->toComponent()->id().toStdString();
-            conn.link = "PCIe_Gen5";
-            config.connections.push_back(conn);
-        }
+        cxlsim::ConnectionConfig conn;
+        conn.from = fromId;
+        conn.to   = toId;
+        conn.link = linkStr;
+        config.connections.push_back(conn);
     }
 
     return config;

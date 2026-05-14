@@ -553,7 +553,19 @@ void MainWindow::createConnections() {
 
                     // ── 应用新配置到主窗口和拓扑图 ────────────────────────
                     config_ = newConfig;
-                    if (topologyEditor_) topologyEditor_->updateTopology(config_);
+                    if (topologyEditor_) {
+                        // 只更新缓存参数（不重建 scene，保留用户调整的布局）
+                        topologyEditor_->syncCachedConfig(config_);
+                        // 若结构发生变化（节点数不同），才重建拓扑图
+                        auto cur = topologyEditor_->getCurrentConfig();
+                        bool structChanged =
+                            cur.switches.size()     != config_.switches.size() ||
+                            cur.cxl_devices.size()  != config_.cxl_devices.size() ||
+                            cur.connections.size()  != config_.connections.size();
+                        if (structChanged) {
+                            topologyEditor_->updateTopology(config_);
+                        }
+                    }
                     updateStatus("✓ 配置已应用");
                     if (logView_) logView_->append("[INFO] ✅ 配置已应用");
                 });
@@ -574,10 +586,15 @@ void MainWindow::createConnections() {
     if (topologyEditor_ && configTree_) {
         connect(topologyEditor_, &TopologyEditorWidget::topologyModified,
                 this, [this]() {
+                    // 从 scene 重建完整 config（新增节点用默认参数，已有节点保留参数）
                     config_ = topologyEditor_->getCurrentConfig();
+                    // 把合并后的 config 写回 topologyEditor 的缓存，
+                    // 这样下次 getCurrentConfig 时新节点的参数也有记录
+                    topologyEditor_->syncCachedConfig(config_);
+                    // 同步到配置树（只更新参数，不改结构）
                     configTree_->setConfig(config_);
-                    updateStatus("\u62d3\u6251\u56fe\u5df2\u4fee\u6539");
-                    if (logView_) logView_->append("[INFO] \u62d3\u6251\u56fe\u5df2\u4fee\u6539\uff0c\u914d\u7f6e\u5df2\u540c\u6b65");
+                    updateStatus("拓扑图已修改，配置已同步");
+                    if (logView_) logView_->append("[INFO] 拓扑图已修改，配置已同步");
                 });
     }
     

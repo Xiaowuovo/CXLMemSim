@@ -41,9 +41,6 @@ private slots:
     void onItemDoubleClicked(QTreeWidgetItem* item, int column);
     void onComboChanged(QTreeWidgetItem* item, const QString& value);
     void markDirty();
-    void onAddDevice();
-    void onAddSwitch();
-    void onRemoveSelected();
 
 private:
     void setupUI();

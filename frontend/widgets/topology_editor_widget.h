@@ -138,6 +138,7 @@ public:
     void updateDeviceMetrics(const QString& deviceId, const DeviceMetrics& m);
     void updateLinkUtilization(const QString& fromId, const QString& toId, double utilizPct);
     void clearAllMetrics();
+    void syncCachedConfig(const cxlsim::CXLSimConfig& config) { cachedConfig_ = config; }
     void setZoomLevel(double factor);
     double zoomLevel() const;
 
