@@ -66,7 +66,7 @@ void MetricsPanel::setupUI() {
     // 带宽仪表
     auto* bwBox = new QVBoxLayout();
     bwBox->setSpacing(2);
-    auto* bwLabel = new QLabel("Bandwidth (GB/s)", this);
+    auto* bwLabel = new QLabel("CXL Bandwidth", this);
     bwLabel->setStyleSheet("color: #888888; font-size: 10px; text-align: center;");
     bwLabel->setAlignment(Qt::AlignCenter);
     bwBox->addWidget(bwLabel);
@@ -89,7 +89,7 @@ void MetricsPanel::setupUI() {
     // 延迟仪表
     auto* latBox = new QVBoxLayout();
     latBox->setSpacing(2);
-    auto* latLabel = new QLabel("Avg Latency (ns)", this);
+    auto* latLabel = new QLabel("CXL Avg Latency", this);
     latLabel->setStyleSheet("color: #888888; font-size: 10px; text-align: center;");
     latLabel->setAlignment(Qt::AlignCenter);
     latBox->addWidget(latLabel);
@@ -347,24 +347,38 @@ void MetricsPanel::updateStats(const cxlsim::EpochStats& stats) {
     epochNumber_->setText(QString::number(stats.epoch_number));
 
     // ── 科研关键：实时带宽和延迟仪表盘 ──
-    double bw = 0.0;
-    if (stats.cxl_accesses > 0)
-        bw = (stats.cxl_accesses * 64.0) / 0.01 / 1e9;  // GB/s (cxl_accesses * 64B / 10ms epoch)
-    bandwidthDisplay_->setText(QString::number(bw, 'f', 2));
-    
-    latencyDisplay_->setText(QString::number(stats.avg_latency_ns, 'f', 1));
+    // 带宽：cxl_accesses × 64B / epoch时长（默认10ms = 0.01s）/ 1GB
+    // 注：epoch_ms 在后端 TimingAnalyzerConfig 中配置，这里使用相同默认值
+    const double epochSec = 0.01;
+    double bw = (stats.cxl_accesses > 0)
+        ? (stats.cxl_accesses * 64.0) / epochSec / 1e9
+        : 0.0;
+    if (bw >= 1.0)
+        bandwidthDisplay_->setText(QString("%1 GB/s").arg(bw, 0, 'f', 2));
+    else if (bw >= 0.001)  // > 1 MB/s 才显示具体值，以下视为空闲
+        bandwidthDisplay_->setText(QString("%1 MB/s").arg(bw * 1024.0, 0, 'f', 1));
+    else
+        bandwidthDisplay_->setText("—");
+
+    // 延迟：cxl_accesses=0 时该epoch无CXL访问，avg_latency_ns=0，显示'—'
+    if (stats.avg_latency_ns > 0.0)
+        latencyDisplay_->setText(QString("%1 ns").arg(stats.avg_latency_ns, 0, 'f', 1));
+    else
+        latencyDisplay_->setText("—");
 
     totalAccesses_->setText(QString::number(stats.total_accesses));
     l3Misses_->setText(QString::number(stats.l3_misses));
     cxlAccesses_->setText(QString::number(stats.cxl_accesses));
 
-    // ── 内存层次化比例（Local DRAM % / CXL %）──
-    uint64_t localAccesses = stats.local_dram_accesses;
-    uint64_t cxlAccesses   = stats.cxl_accesses;
-    uint64_t total = localAccesses + cxlAccesses;
-    if (total > 0) {
-        int localPct = (int)(100.0 * localAccesses / total);
-        int cxlPct   = 100 - localPct;
+    // ── 内存层次化比例（相对于总访问次数）──
+    // local_dram_accesses = L3 miss 中落在本地DRAM的次数
+    // cxl_accesses = L3 miss 中落在CXL设备的次数
+    // total_accesses = 全部访问（含L3 hit）
+    // 用 total_accesses 作分母，才能体现真实的内存层次分布
+    if (stats.total_accesses > 0) {
+        int cxlPct   = (int)(100.0 * stats.cxl_accesses   / stats.total_accesses);
+        int localPct = (int)(100.0 * stats.local_dram_accesses / stats.total_accesses);
+        // 剩余 (100-cxlPct-localPct) 为 L3 hit
         tieringRatio_->setText(QString("L %1%  /  CXL %2%").arg(localPct).arg(cxlPct));
     } else {
         tieringRatio_->setText("L —  /  CXL —");

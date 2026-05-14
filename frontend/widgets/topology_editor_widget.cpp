@@ -771,18 +771,26 @@ void ComponentItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt
 
         // ── 列1：延迟 ──────────────────────────────────────────
         if (metrics_.latency_ns >= 0) {
-            QColor latColor = metrics_.latency_ns > 300 ? QColor(0xEF, 0x44, 0x44)
-                            : metrics_.latency_ns > 150 ? QColor(0xFB, 0xBF, 0x24)
-                            : QColor(0x4A, 0xDE, 0x80);
             // 标签
             painter->setPen(QColor(0x55, 0x55, 0x55));
             painter->drawText(QRectF(col1X + 3, textY, colW - 3, textH),
                               Qt::AlignLeft, "lat");
-            // 值
+            // 值：=0 表示该epoch无CXL访问（非固定延迟），显示'—'更准确
+            QString latStr;
+            QColor latColor;
+            if (metrics_.latency_ns <= 0.0) {
+                latStr = QString::fromUtf8("\xe2\x80\x94"); // —
+                latColor = QColor(0x44, 0x44, 0x44);
+            } else if (metrics_.latency_ns >= 1000.0) {
+                latStr = QString("%1µs").arg(metrics_.latency_ns / 1000.0, 0, 'f', 1);
+                latColor = QColor(0xEF, 0x44, 0x44);
+            } else {
+                latStr = QString("%1ns").arg(metrics_.latency_ns, 0, 'f', 0);
+                latColor = metrics_.latency_ns > 300 ? QColor(0xEF, 0x44, 0x44)
+                         : metrics_.latency_ns > 150 ? QColor(0xFB, 0xBF, 0x24)
+                         : QColor(0x4A, 0xDE, 0x80);
+            }
             painter->setPen(latColor);
-            QString latStr = metrics_.latency_ns >= 1000
-                ? QString("%1µs").arg(metrics_.latency_ns / 1000.0, 0, 'f', 1)
-                : QString("%1ns").arg(metrics_.latency_ns, 0, 'f', 0);
             painter->drawText(QRectF(col1X + 3, textY, colW - 3, textH),
                               Qt::AlignRight, latStr);
         }
@@ -793,11 +801,20 @@ void ComponentItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt
             painter->setPen(QColor(0x55, 0x55, 0x55));
             painter->drawText(QRectF(col2X + 3, textY, colW - 6, textH),
                               Qt::AlignLeft, "bw");
-            // 值
-            painter->setPen(QColor(0x22, 0xC5, 0x5E));
-            QString bwStr = metrics_.bandwidth_gbps >= 1.0
-                ? QString("%1GB/s").arg(metrics_.bandwidth_gbps, 0, 'f', 1)
-                : QString("%1MB/s").arg(metrics_.bandwidth_gbps * 1024.0, 0, 'f', 0);
+            // 值：< 0.001 GB/s (1 MB/s) 视为无流量，显示 '—'
+            QString bwStr;
+            QColor bwColor;
+            if (metrics_.bandwidth_gbps < 0.001) {
+                bwStr = QString::fromUtf8("\xe2\x80\x94"); // —
+                bwColor = QColor(0x44, 0x44, 0x44);
+            } else if (metrics_.bandwidth_gbps >= 1.0) {
+                bwStr = QString("%1GB/s").arg(metrics_.bandwidth_gbps, 0, 'f', 1);
+                bwColor = QColor(0x22, 0xC5, 0x5E);
+            } else {
+                bwStr = QString("%1MB/s").arg(metrics_.bandwidth_gbps * 1024.0, 0, 'f', 0);
+                bwColor = QColor(0x22, 0xC5, 0x5E);
+            }
+            painter->setPen(bwColor);
             painter->drawText(QRectF(col2X + 3, textY, colW - 6, textH),
                               Qt::AlignRight, bwStr);
         }
