@@ -303,6 +303,7 @@ void TopologyEditorWidget::setupToolBar() {
 }
 
 void TopologyEditorWidget::updateTopology(const cxlsim::CXLSimConfig& config) {
+    cachedConfig_ = config;   // ← 缓存完整配置，供 getCurrentConfig() 使用
     clearTopology();
     deviceCounter_ = 0;
     switchCounter_ = 0;
@@ -345,10 +346,32 @@ void TopologyEditorWidget::updateTopology(const cxlsim::CXLSimConfig& config) {
 
     for (const auto& conn : config.connections) {
         QString fromId = QString::fromStdString(conn.from);
-        QString toId = QString::fromStdString(conn.to);
+        QString toId   = QString::fromStdString(conn.to);
 
         if (components_.contains(fromId) && components_.contains(toId)) {
             auto* link = new LinkItem(components_[fromId], components_[toId]);
+
+            // 根据连接的目标设备/交换机设置物理参数
+            double bw  = 64.0;
+            double lat = 40.0;
+            // 优先匹配目标节点的设备配置
+            for (const auto& dev : config.cxl_devices) {
+                if (conn.to == dev.id) {
+                    bw  = dev.bandwidth_gbps;
+                    lat = dev.base_latency_ns;
+                    break;
+                }
+            }
+            // 若目标是交换机，用交换机延迟
+            for (const auto& sw : config.switches) {
+                if (conn.to == sw.id) {
+                    lat = sw.latency_ns;
+                    break;
+                }
+            }
+            link->setBandwidth(bw);
+            link->setLatency(lat);
+
             scene_->addItem(link);
             links_.append(link);
             components_[fromId]->addLink(link);
@@ -515,38 +538,41 @@ void TopologyEditorWidget::autoLayout() {
 }
 
 cxlsim::CXLSimConfig TopologyEditorWidget::getCurrentConfig() const {
-    cxlsim::CXLSimConfig config;
-    config.name = "GUI_Generated_Topology";
-    
-    for (auto* comp : components_) {
-        if (comp->componentType() == ComponentItem::RootComplex) {
-            config.root_complex.id = comp->id().toStdString();
-            config.root_complex.local_dram_size_gb = 64;
-        } else if (comp->componentType() == ComponentItem::Switch) {
-            cxlsim::SwitchConfig sw;
-            sw.id = comp->id().toStdString();
-            sw.num_ports = 8;
-            sw.latency_ns = 40.0;
-            config.switches.push_back(sw);
-        } else if (comp->componentType() == ComponentItem::CXLDevice) {
-            cxlsim::CXLDeviceConfig dev;
-            dev.id = comp->id().toStdString();
-            dev.type = "Type3";
-            dev.capacity_gb = 128;
-            dev.bandwidth_gbps = 64.0;
-            dev.base_latency_ns = 170.0;
-            config.cxl_devices.push_back(dev);
+    // 以 cachedConfig_ 为基准（含所有真实参数），仅用当前 scene 更新结构
+    cxlsim::CXLSimConfig config = cachedConfig_;
+
+    // 若 cachedConfig_ 为空（尚未调用过 updateTopology），则从 scene 重建
+    if (config.root_complex.id.empty() && config.switches.empty() && config.cxl_devices.empty()) {
+        config.name = "GUI_Generated_Topology";
+        for (auto* comp : components_) {
+            if (comp->componentType() == ComponentItem::RootComplex) {
+                config.root_complex.id = comp->id().toStdString();
+                config.root_complex.local_dram_size_gb = 64;
+            } else if (comp->componentType() == ComponentItem::Switch) {
+                cxlsim::SwitchConfig sw;
+                sw.id         = comp->id().toStdString();
+                sw.num_ports  = 8;
+                sw.latency_ns = 40.0;
+                config.switches.push_back(sw);
+            } else if (comp->componentType() == ComponentItem::CXLDevice) {
+                cxlsim::CXLDeviceConfig dev;
+                dev.id              = comp->id().toStdString();
+                dev.type            = "Type3";
+                dev.capacity_gb     = 128;
+                dev.bandwidth_gbps  = 64.0;
+                dev.base_latency_ns = 170.0;
+                config.cxl_devices.push_back(dev);
+            }
+        }
+        for (auto* link : links_) {
+            cxlsim::ConnectionConfig conn;
+            conn.from = link->fromComponent()->id().toStdString();
+            conn.to   = link->toComponent()->id().toStdString();
+            conn.link = "PCIe_Gen5";
+            config.connections.push_back(conn);
         }
     }
-    
-    for (auto* link : links_) {
-        cxlsim::ConnectionConfig conn;
-        conn.from = link->fromComponent()->id().toStdString();
-        conn.to = link->toComponent()->id().toStdString();
-        conn.link = "PCIe_Gen5";
-        config.connections.push_back(conn);
-    }
-    
+
     return config;
 }
 

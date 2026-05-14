@@ -530,43 +530,42 @@ void MainWindow::createConnections() {
     if (configTree_) {
         connect(configTree_, &ConfigTreeWidget::configApplied,
                 this, [this](const cxlsim::CXLSimConfig& newConfig) {
+                    // ── 模拟运行中：必须先停止才能应用新配置 ──────────────
+                    if (simulationRunning_) {
+                        auto btn = QMessageBox::warning(
+                            this, "⚠️ 模拟运行中",
+                            "新配置需要停止当前模拟后才能生效。\n\n"
+                            "是否停止模拟并应用新配置？\n\n"
+                            "（停止后已收集的数据将保留，可在导出页面查看）",
+                            QMessageBox::Yes | QMessageBox::No,
+                            QMessageBox::No);
+                        if (btn != QMessageBox::Yes) {
+                            // 用户取消：不应用，仅提示
+                            updateStatus("⚠️ 请先停止模拟再应用新配置");
+                            if (logView_) logView_->append("[WARN] 用户取消：模拟运行中，配置未应用");
+                            return;
+                        }
+                        // 用户同意停止
+                        onStopSimulation();
+                        analyzer_.reset();
+                        if (logView_) logView_->append("[INFO] 模拟已停止，正在应用新配置...");
+                    }
+
+                    // ── 应用新配置到主窗口和拓扑图 ────────────────────────
                     config_ = newConfig;
-                    // 同步拓扑图
                     if (topologyEditor_) topologyEditor_->updateTopology(config_);
                     updateStatus("✓ 配置已应用");
                     if (logView_) logView_->append("[INFO] ✅ 配置已应用");
-
-                    // 如果模拟正在运行，提示是否重启
-                    if (simulationRunning_) {
-                        auto btn = QMessageBox::question(
-                            this, "配置已更改",
-                            "配置已应用。当前模拟使用旧配置运行中。\n\n是否要应用新配置并重启模拟？",
-                            QMessageBox::Yes | QMessageBox::No,
-                            QMessageBox::No);
-                        if (btn == QMessageBox::Yes) {
-                            // 先提示是否导出本次结果
-                            if (!epochHistory_.empty()) {
-                                auto exportBtn = QMessageBox::question(
-                                    this, "是否导出本次实验数据",
-                                    QString("重启前已收集 %1 个 Epoch 数据。\n是否在重启前导出本次实验结果？")
-                                        .arg(epochHistory_.size()),
-                                    QMessageBox::Yes | QMessageBox::No,
-                                    QMessageBox::Yes);
-                                if (exportBtn == QMessageBox::Yes) {
-                                    onExportData();
-                                }
-                            }
-                            onStopSimulation();
-                            analyzer_.reset();
-                            onStartSimulation();
-                        }
-                    }
                 });
 
         connect(configTree_, &ConfigTreeWidget::configDirty,
                 this, [this](bool dirty) {
                     if (dirty) {
-                        updateStatus("配置已修改——请点击「应用配置」使修改生效");
+                        if (simulationRunning_) {
+                            updateStatus("⚠️ 配置已修改（模拟运行中，需停止后才能应用）");
+                        } else {
+                            updateStatus("配置已修改——请点击「应用配置」使修改生效");
+                        }
                     }
                 });
     }

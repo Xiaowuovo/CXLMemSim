@@ -507,10 +507,15 @@ void ConfigTreeWidget::onItemDoubleClicked(QTreeWidgetItem* item, int column) {
         if (prop.contains("DRAM大小")) {
             pendingConfig_.root_complex.local_dram_size_gb = nv.toULongLong();
         } else if (prop.contains("延迟") && prop.contains("ns")) {
-            // 设备延迟行 -- 尝试匹配父节点设备ID
+            // 设备延迟行 -- 父节点文本格式: "  ● CXL_MEM1"，去掉●和空格提取ID
             auto* parent = item->parent();
             if (parent) {
-                QString devId = parent->text(0).trimmed().mid(1).trimmed();
+                QString raw = parent->text(0).trimmed(); // "● CXL_MEM1"
+                // 去掉开头的 ● 符号（单字节或多字节）及紧随的空格
+                int dotPos = raw.indexOf(QChar(0x25CF)); // ●
+                QString devId = (dotPos >= 0)
+                    ? raw.mid(dotPos + 1).trimmed()
+                    : raw.trimmed();
                 for (auto& dev : pendingConfig_.cxl_devices) {
                     if (QString::fromStdString(dev.id) == devId) {
                         dev.base_latency_ns = nv.toDouble();
@@ -519,7 +524,6 @@ void ConfigTreeWidget::onItemDoubleClicked(QTreeWidgetItem* item, int column) {
                 }
             }
         }
-        config_ = pendingConfig_;
         markDirty();
     }
 }
@@ -541,9 +545,8 @@ void ConfigTreeWidget::onAddDevice() {
     dev.base_latency_ns = 170.0;
 
     pendingConfig_.cxl_devices.push_back(dev);
-    config_ = pendingConfig_;
     populateTree();
-    markDirty();
+    onApplyConfig(); // 结构变更直接生效并发出 configApplied 信号
 }
 
 void ConfigTreeWidget::onAddSwitch() {
@@ -561,9 +564,8 @@ void ConfigTreeWidget::onAddSwitch() {
     sw.latency_ns = 40.0;
 
     pendingConfig_.switches.push_back(sw);
-    config_ = pendingConfig_;
     populateTree();
-    markDirty();
+    onApplyConfig(); // 结构变更直接生效
 }
 
 void ConfigTreeWidget::onRemoveSelected() {
@@ -583,9 +585,8 @@ void ConfigTreeWidget::onRemoveSelected() {
         for (auto it = pendingConfig_.cxl_devices.begin(); it != pendingConfig_.cxl_devices.end(); ++it) {
             if (QString::fromStdString(it->id) == id) {
                 pendingConfig_.cxl_devices.erase(it);
-                config_ = pendingConfig_;
                 populateTree();
-                markDirty();
+                onApplyConfig();
                 return;
             }
         }
@@ -594,9 +595,8 @@ void ConfigTreeWidget::onRemoveSelected() {
         for (auto it = pendingConfig_.switches.begin(); it != pendingConfig_.switches.end(); ++it) {
             if (QString::fromStdString(it->id) == id) {
                 pendingConfig_.switches.erase(it);
-                config_ = pendingConfig_;
                 populateTree();
-                markDirty();
+                onApplyConfig();
                 return;
             }
         }

@@ -181,7 +181,9 @@ private:
 
     QMap<QString, ComponentItem*> components_;
     QList<LinkItem*> links_;
-    
+
+    cxlsim::CXLSimConfig cachedConfig_;  ///< last config passed to updateTopology()
+
     bool connectionMode_;
     ComponentItem* connectionSource_;
     QGraphicsLineItem* connectionPreview_;
