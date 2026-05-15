@@ -140,6 +140,35 @@ void TopologyEditorWidget::updateLinkUtilization(const QString& fromId, const QS
     }
 }
 
+void TopologyEditorWidget::refreshStaticParams() {
+    // 建立 cachedConfig_ 的参数查找表
+    std::unordered_map<std::string, double> devBw, devLat, swLat, swBw;
+    for (const auto& dev : cachedConfig_.cxl_devices) {
+        devBw[dev.id]  = dev.bandwidth_gbps;
+        devLat[dev.id] = dev.base_latency_ns;
+    }
+    for (const auto& sw : cachedConfig_.switches) {
+        swLat[sw.id] = sw.latency_ns;
+        swBw[sw.id]  = sw.bandwidth_per_port_gbps;
+    }
+
+    for (auto* link : links_) {
+        if (!link->fromComponent() || !link->toComponent()) continue;
+        std::string toId = link->toComponent()->id().toStdString();
+
+        if (devBw.count(toId)) {
+            // SW/RC -> CXL Device：用设备配置的带宽和延迟
+            link->setBandwidth(devBw.at(toId));
+            link->setLatency(devLat.at(toId));
+        } else if (swLat.count(toId)) {
+            // RC -> SW：延迟用交换机延迟，带宽用每端口带宽
+            link->setLatency(swLat.at(toId));
+            link->setBandwidth(swBw.at(toId));
+        }
+        // RC 节点作为目标时不处理（RC 无链路延迟配置）
+    }
+}
+
 void TopologyEditorWidget::clearAllMetrics() {
     DeviceMetrics empty;
     for (auto* comp : components_)

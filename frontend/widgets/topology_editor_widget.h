@@ -103,9 +103,9 @@ public:
 
     void updatePosition();
 
-    void setBandwidth(double gbps) { bandwidth_gbps_ = gbps; }
-    void setLatency(double ns) { latency_ns_ = ns; }
-    void setUtilization(double pct) { utilization_pct_ = pct; update(); }
+    void setBandwidth(double gbps) { bandwidth_gbps_ = gbps; update(); }
+    void setLatency(double ns)     { latency_ns_     = ns;   update(); }
+    void setUtilization(double pct){ utilization_pct_ = pct; update(); }
     
     ComponentItem* fromComponent() const { return from_; }
     ComponentItem* toComponent() const { return to_; }
@@ -139,6 +139,7 @@ public:
     void updateLinkUtilization(const QString& fromId, const QString& toId, double utilizPct);
     void clearAllMetrics();
     void syncCachedConfig(const cxlsim::CXLSimConfig& config) { cachedConfig_ = config; }
+    void refreshStaticParams();  ///< 配置应用后刷新 LinkItem 的静态带宽/延迟参数
     void setZoomLevel(double factor);
     double zoomLevel() const;
 

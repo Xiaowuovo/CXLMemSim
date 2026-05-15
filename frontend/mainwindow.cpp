@@ -564,6 +564,9 @@ void MainWindow::createConnections() {
                             cur.connections.size()  != config_.connections.size();
                         if (structChanged) {
                             topologyEditor_->updateTopology(config_);
+                        } else {
+                            // 刷新链路的静态 bandwidth/latency 标签
+                            topologyEditor_->refreshStaticParams();
                         }
                     }
                     updateStatus("✓ 配置已应用");
@@ -1035,8 +1038,8 @@ void MainWindow::updateMetrics() {
             sm.active         = true;
             sm.latency_ns     = sw.latency_ns;      // 交换机转发固定延迟（通常 15~30 ns）
             sm.bandwidth_gbps = totalCxlTrafficGb;  // 通过交换机的总流量
-            // 端口利用率：总流量 / (端口数 × 每端口带宽)
-            double swMaxBw = sw.num_ports * 64.0;   // 假设每端口 64 GB/s (PCIe5 x16)
+            // 端口利用率：总流量 / (端口数 × 每端口带宽，来自配置)
+            double swMaxBw = sw.num_ports * sw.bandwidth_per_port_gbps;
             sm.load_pct = (swMaxBw > 0 && totalCxlTrafficGb > 0)
                 ? std::min(100.0, (totalCxlTrafficGb / swMaxBw) * 100.0)
                 : 0.0;

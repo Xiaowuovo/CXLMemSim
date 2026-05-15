@@ -251,6 +251,10 @@ void ConfigTreeWidget::addSwitchesItem() {
                   {"15", "20", "30", "40", "60"},
                   QString::number(static_cast<int>(sw.latency_ns)),
                   QString("sw_latency_%1").arg(QString::fromStdString(sw.id)));
+        makeCombo(swItem, "    \u6bcf\u7aef\u53e3\u5e26\u5bbd (GB/s)",
+                  {"16", "32", "64", "128"},
+                  QString::number(static_cast<int>(sw.bandwidth_per_port_gbps)),
+                  QString("sw_bw_%1").arg(QString::fromStdString(sw.id)));
         swItem->setExpanded(true);
     }
 }
@@ -397,6 +401,16 @@ void ConfigTreeWidget::onComboChanged(QTreeWidgetItem* item, const QString& valu
         for (auto& sw : pendingConfig_.switches) {
             if (QString::fromStdString(sw.id) == swId) {
                 sw.latency_ns = value.toDouble();
+                break;
+            }
+        }
+
+    // 交换机每端口带宽
+    } else if (key.startsWith("sw_bw_")) {
+        QString swId = key.mid(QString("sw_bw_").length());
+        for (auto& sw : pendingConfig_.switches) {
+            if (QString::fromStdString(sw.id) == swId) {
+                sw.bandwidth_per_port_gbps = value.toDouble();
                 break;
             }
         }
