@@ -3,15 +3,16 @@
 
 #include <QWidget>
 #include "benchmark_widget.h"
-#include "comparison_widget.h"
 #include "analyzer/timing_analyzer.h"
+#include <vector>
 
 class QVBoxLayout;
+class QScrollArea;
 
 /**
  * @brief 基准测试独立页面
- * 
- * 包含基准测试配置和性能对比视图
+ *
+ * 包含固定基准 + 运行测试（最近 N epoch）+ 对比表格
  */
 class BenchmarkPageWidget : public QWidget {
     Q_OBJECT
@@ -20,25 +21,20 @@ public:
     explicit BenchmarkPageWidget(QWidget *parent = nullptr);
     ~BenchmarkPageWidget();
 
-    // 更新实时数据
-    void updateCurrentStats(const cxlsim::EpochStats& stats);
-    
+    // 传入 epoch 历史指针（由 MainWindow 持有）
+    void setEpochHistory(const std::vector<cxlsim::EpochStats>* history);
+
     // 重置
     void reset();
 
 signals:
-    void baselineFixed(const cxlsim::EpochStats& baseline);
+    void baselineFixed(const BenchmarkWidget::BenchmarkStats& baseline);
     void baselineCleared();
 
 private:
     void setupUI();
 
-    // 组件
     BenchmarkWidget* benchmarkWidget_;
-    ComparisonWidget* comparisonWidget_;
-    
-    // 当前数据
-    cxlsim::EpochStats currentStats_;
 };
 
 #endif // BENCHMARK_PAGE_WIDGET_H

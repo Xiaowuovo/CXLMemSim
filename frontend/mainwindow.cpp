@@ -431,6 +431,7 @@ void MainWindow::setupPages() {
     benchScroll->setStyleSheet("QScrollArea { background: #000000; border: none; }");
     
     benchmarkPage_ = new BenchmarkPageWidget(benchScroll);
+    benchmarkPage_->setEpochHistory(&epochHistory_);
     benchScroll->setWidget(benchmarkPage_);
     pageStack_->addWidget(benchScroll);
 
@@ -974,10 +975,6 @@ void MainWindow::updateMetrics() {
     const auto& stats = analyzer_->get_current_stats();
     metricsPanel_->updateStats(stats);
     
-    // 更新基准测试页面
-    if (benchmarkPage_) {
-        benchmarkPage_->updateCurrentStats(stats);
-    }
     
     // 收集历史数据用于导出
     epochHistory_.push_back(stats);

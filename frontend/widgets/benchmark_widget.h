@@ -3,101 +3,85 @@
 
 #include <QWidget>
 #include <QGroupBox>
-#include <QComboBox>
-#include <QRadioButton>
+#include <QSpinBox>
 #include <QPushButton>
 #include <QLabel>
+#include <QTableWidget>
 #include <vector>
 #include "analyzer/timing_analyzer.h"
 
 /**
  * @brief 基准测试配置和管理Widget
- * 
- * 核心功能：
- * 1. 预设负载选择（随机读写、流式访问、只读等）
- * 2. 对照组设定（纯本地DRAM、纯CXL、混合）
- * 3. 运行基准测试并固定结果
+ *
+ * 简化功能：
+ * 1. 固定基准：将当前实验的全量历史统计聚合后记录为基准
+ * 2. 运行测试：取最近 N 个 epoch 聚合后与基准对比
  */
 class BenchmarkWidget : public QWidget {
     Q_OBJECT
 
 public:
-    enum WorkloadPreset {
-        RANDOM_RW,      // 随机读写
-        STREAM,         // 流式访问 (STREAM benchmark)
-        READ_ONLY,      // 100% 读
-        WRITE_HEAVY,    // 写密集 (30% 写)
-        MEMCACHED       // Memcached访问模式
-    };
-
-    enum ArchitectureBaseline {
-        PURE_LOCAL,     // 100% Local DRAM（低延迟基准）
-        PURE_CXL,       // 100% CXL Memory（高容量基准）
-        HYBRID_CURRENT  // 当前混合配置
-    };
-
     struct BenchmarkStats {
         double avg_latency_ns;
         double p95_latency_ns;
         double p99_latency_ns;
         double bandwidth_gbps;
         double link_utilization_pct;
+        double tiering_ratio;
+        double queuing_delay_ns;
         uint64_t total_accesses;
         uint64_t cxl_accesses;
         uint64_t local_accesses;
-        
+        int      epoch_count;
+
         BenchmarkStats() : avg_latency_ns(0), p95_latency_ns(0), p99_latency_ns(0),
-                          bandwidth_gbps(0), link_utilization_pct(0),
-                          total_accesses(0), cxl_accesses(0), local_accesses(0) {}
+                           bandwidth_gbps(0), link_utilization_pct(0),
+                           tiering_ratio(0), queuing_delay_ns(0),
+                           total_accesses(0), cxl_accesses(0), local_accesses(0),
+                           epoch_count(0) {}
     };
 
     explicit BenchmarkWidget(QWidget *parent = nullptr);
     ~BenchmarkWidget() = default;
 
-    // 获取当前基准统计
+    void setEpochHistory(const std::vector<cxlsim::EpochStats>* history);
+
     BenchmarkStats getCurrentBaseline() const { return baselineStats_; }
     bool hasBaseline() const { return hasBaseline_; }
-    
-    // 清除基准
+
     void clearBaseline();
 
 signals:
-    void runBenchmarkRequested(WorkloadPreset workload, ArchitectureBaseline arch);
     void baselineFixed(const BenchmarkStats& stats);
+    void testRan(const BenchmarkStats& current, const BenchmarkStats& baseline);
     void baselineCleared();
 
-public slots:
-    void onBenchmarkCompleted(const cxlsim::EpochStats& stats);
-
 private slots:
-    void onRunBenchmark();
     void onFixBaseline();
+    void onRunTest();
+    void onClearBaseline();
 
 private:
     void setupUI();
-    QString getWorkloadDescription(WorkloadPreset preset) const;
-    QString getArchDescription(ArchitectureBaseline arch) const;
+    void updateComparisonTable();
+    BenchmarkStats aggregateEpochs(int fromIdx, int toIdx) const;
 
-    // UI组件
-    QComboBox* workloadCombo_;
-    QComboBox* archCombo_;
-    QPushButton* runBtn_;
+    const std::vector<cxlsim::EpochStats>* epochHistory_;
+
+    // UI
     QPushButton* fixBtn_;
+    QPushButton* runBtn_;
     QPushButton* clearBtn_;
-    
-    // 结果显示
-    QLabel* statusLabel_;
-    QGroupBox* resultsGroup_;
-    QLabel* avgLatencyLabel_;
-    QLabel* p95LatencyLabel_;
-    QLabel* p99LatencyLabel_;
-    QLabel* bandwidthLabel_;
-    
-    // 基准数据
+    QSpinBox*    epochCountSpin_;
+    QLabel*      statusLabel_;
+    QLabel*      baselineEpochLabel_;
+    QTableWidget* compTable_;
+
+    // 数据
     BenchmarkStats baselineStats_;
     BenchmarkStats currentRunStats_;
     bool hasBaseline_;
-    bool isRunning_;
+    bool hasCurrentRun_;
 };
 
 #endif // BENCHMARK_WIDGET_H
