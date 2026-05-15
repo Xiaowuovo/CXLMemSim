@@ -497,10 +497,143 @@ void MainWindow::createConnections() {
             if (idx == SidebarWidget::EXPORT && exportPage_) {
                 exportPage_->setEpochData(epochHistory_);
                 exportPage_->setSessionHistory(sessionHistory_);
-                // 配置快照
+                // ── 完整配置快照 JSON ──────────────────────────────────
                 QJsonObject snap;
-                snap["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
-                snap["total_epochs"] = static_cast<qint64>(epochHistory_.size());
+                snap["schema_version"] = "1.0";
+                snap["exported_at"]    = QDateTime::currentDateTime().toString(Qt::ISODate);
+                snap["name"]        = QString::fromStdString(config_.name);
+                snap["description"] = QString::fromStdString(config_.description);
+
+                // Root Complex
+                {
+                    QJsonObject rc;
+                    rc["id"]                    = QString::fromStdString(config_.root_complex.id);
+                    rc["local_dram_size_gb"]    = static_cast<qint64>(config_.root_complex.local_dram_size_gb);
+                    rc["local_dram_latency_ns"] = config_.root_complex.local_dram_latency_ns;
+                    snap["root_complex"] = rc;
+                }
+
+                // Switches
+                {
+                    QJsonArray arr;
+                    for (const auto& sw : config_.switches) {
+                        QJsonObject o;
+                        o["id"]                      = QString::fromStdString(sw.id);
+                        o["latency_ns"]              = sw.latency_ns;
+                        o["num_ports"]               = sw.num_ports;
+                        o["bandwidth_per_port_gbps"] = sw.bandwidth_per_port_gbps;
+                        arr.append(o);
+                    }
+                    snap["switches"] = arr;
+                }
+
+                // CXL Devices
+                {
+                    QJsonArray arr;
+                    for (const auto& d : config_.cxl_devices) {
+                        QJsonObject o;
+                        o["id"]                  = QString::fromStdString(d.id);
+                        o["type"]                = QString::fromStdString(d.type);
+                        o["capacity_gb"]         = static_cast<qint64>(d.capacity_gb);
+                        o["link_gen"]            = QString::fromStdString(d.link_gen);
+                        o["link_width"]          = QString::fromStdString(d.link_width);
+                        o["bandwidth_gbps"]      = d.bandwidth_gbps;
+                        o["base_latency_ns"]     = d.base_latency_ns;
+                        o["media_latency_ns"]    = d.media_latency_ns;
+                        o["supports_hdm"]        = d.supports_hdm;
+                        o["supports_coherency"]  = d.supports_coherency;
+                        arr.append(o);
+                    }
+                    snap["cxl_devices"] = arr;
+                }
+
+                // Connections
+                {
+                    QJsonArray arr;
+                    for (const auto& c : config_.connections) {
+                        QJsonObject o;
+                        o["from"] = QString::fromStdString(c.from);
+                        o["to"]   = QString::fromStdString(c.to);
+                        o["link"] = QString::fromStdString(c.link);
+                        arr.append(o);
+                    }
+                    snap["connections"] = arr;
+                }
+
+                // Memory Policy
+                {
+                    static const char* policyNames[] = {"first_touch","interleave","tiering","custom"};
+                    int pi = static_cast<int>(config_.memory_policy.type);
+                    QJsonObject mp;
+                    mp["type"]                      = policyNames[std::max(0,std::min(pi,3))];
+                    mp["local_first_gb"]            = static_cast<qint64>(config_.memory_policy.local_first_gb);
+                    mp["interleave_granularity_kb"] = config_.memory_policy.interleave_granularity_kb;
+                    snap["memory_policy"] = mp;
+                }
+
+                // Workload
+                {
+                    static const char* patNames[] = {"sequential","random","stride","mixed"};
+                    int pai = static_cast<int>(config_.workload.access_pattern);
+                    QJsonObject wl;
+                    wl["trace_driven"]        = config_.workload.trace_driven;
+                    wl["trace_file_path"]     = QString::fromStdString(config_.workload.trace_file_path);
+                    wl["access_pattern"]      = patNames[std::max(0,std::min(pai,3))];
+                    wl["read_ratio"]          = config_.workload.read_ratio;
+                    wl["injection_rate_gbps"] = config_.workload.injection_rate_gbps;
+                    wl["working_set_gb"]      = static_cast<qint64>(config_.workload.working_set_gb);
+                    wl["stride_bytes"]        = config_.workload.stride_bytes;
+                    wl["duration_sec"]        = config_.workload.duration_sec;
+                    wl["num_threads"]         = config_.workload.num_threads;
+                    snap["workload"] = wl;
+                }
+
+                // Simulation
+                {
+                    QJsonObject sim;
+                    sim["epoch_ms"]                    = config_.simulation.epoch_ms;
+                    sim["enable_congestion_model"]     = config_.simulation.enable_congestion_model;
+                    sim["enable_mlp_optimization"]     = config_.simulation.enable_mlp_optimization;
+                    sim["enable_coherency_simulation"] = config_.simulation.enable_coherency_simulation;
+                    sim["flit_efficiency"]             = config_.simulation.flit_efficiency;
+                    sim["protocol_overhead"]           = config_.simulation.protocol_overhead;
+                    snap["simulation"] = sim;
+                }
+
+                // Performance summary (aggregated over all collected epochs)
+                {
+                    QJsonObject perf;
+                    perf["total_epochs"] = static_cast<qint64>(epochHistory_.size());
+                    if (!epochHistory_.empty()) {
+                        double sl=0, sp95=0, sp99=0, sb=0, su=0, st=0, sq=0;
+                        uint64_t ta=0, ca=0, la=0;
+                        for (const auto& e : epochHistory_) {
+                            sl  += e.avg_latency_ns;
+                            sp95 += e.p95_latency_ns;
+                            sp99 += e.p99_latency_ns;
+                            sb  += (e.total_accesses * 64.0) / (0.01 * 1e9);
+                            su  += e.link_utilization_pct;
+                            st  += e.tiering_ratio;
+                            sq  += e.queuing_delay_ns;
+                            ta  += e.total_accesses;
+                            ca  += e.cxl_accesses;
+                            la  += e.local_dram_accesses;
+                        }
+                        int n = static_cast<int>(epochHistory_.size());
+                        perf["avg_latency_ns"]       = sl  / n;
+                        perf["avg_p95_latency_ns"]   = sp95 / n;
+                        perf["avg_p99_latency_ns"]   = sp99 / n;
+                        perf["avg_bandwidth_gbps"]   = sb  / n;
+                        perf["avg_link_util_pct"]    = su  / n;
+                        perf["avg_tiering_ratio_pct"]= st  / n;
+                        perf["avg_queuing_delay_ns"] = sq  / n;
+                        perf["total_accesses"]       = static_cast<qint64>(ta);
+                        perf["total_cxl_accesses"]   = static_cast<qint64>(ca);
+                        perf["total_local_accesses"] = static_cast<qint64>(la);
+                    }
+                    snap["performance_summary"] = perf;
+                }
+
                 QJsonDocument doc(snap);
                 exportPage_->setConfigData(doc.toJson(QJsonDocument::Indented));
             }
