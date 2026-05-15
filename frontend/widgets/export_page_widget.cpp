@@ -501,18 +501,18 @@ QString ExportPageWidget::generateCSV(const std::vector<cxlsim::EpochStats>& dat
     for (int i = start; i < end && i < (int)data.size(); ++i) {
         const auto& st = data[i];
         double l3r = st.total_accesses > 0 ? 100.0 * st.l3_misses / st.total_accesses : 0;
-        double bw  = st.total_accesses > 0 ? (st.total_accesses * 64.0) / (0.01 * 1e9) : 0;
+        double bw  = (st.cxl_accesses * 64.0) / (0.01 * 1e9);
         s << st.epoch_number << "," << st.total_accesses << "," << st.l3_misses << ","
-          << QString::number(l3r,                  'f', 2) << ","
+          << QString::number(l3r,                   'f', 2) << ","
           << st.local_dram_accesses << "," << st.cxl_accesses << ","
-          << QString::number(st.tiering_ratio,      'f', 2) << ","
-          << QString::number(st.avg_latency_ns,     'f', 2) << ","
-          << QString::number(st.p95_latency_ns,     'f', 2) << ","
-          << QString::number(st.p99_latency_ns,     'f', 2) << ","
-          << QString::number(st.queuing_delay_ns,   'f', 2) << ","
+          << QString::number(st.tiering_ratio,       'f', 2) << ","
+          << QString::number(st.avg_latency_ns,      'f', 2) << ","
+          << QString::number(st.p95_latency_ns,      'f', 2) << ","
+          << QString::number(st.p99_latency_ns,      'f', 2) << ","
+          << QString::number(st.queuing_delay_ns,    'f', 2) << ","
           << QString::number(st.local_dram_latency_ns,'f', 1) << ","
           << QString::number(st.link_utilization_pct,'f', 2) << ","
-          << QString::number(bw,                    'f', 3) << "\n";
+          << QString::number(bw,                     'f', 3) << "\n";
     }
     return csv;
 }
@@ -524,37 +524,61 @@ QString ExportPageWidget::generateMarkdown(const std::vector<cxlsim::EpochStats>
     int n = std::min(end, (int)data.size()) - start;
     if (n <= 0) { s << "# 无数据\n"; return md; }
 
-    double sl = 0, sb = 0, st2 = 0, mx = 0;
+    double sl=0, sp95=0, sp99=0, sb=0, st2=0, su=0, sq=0;
+    double mxP99=0;
+    uint64_t ta=0, ca=0, la=0;
     for (int i = start; i < start + n; ++i) {
-        sl  += data[i].avg_latency_ns;
-        sb  += (data[i].total_accesses * 64.0) / (0.01 * 1e9);
-        st2 += data[i].tiering_ratio;
-        mx   = std::max(mx, data[i].p99_latency_ns);
+        const auto& e = data[i];
+        sl   += e.avg_latency_ns;
+        sp95 += e.p95_latency_ns;
+        sp99 += e.p99_latency_ns;
+        sb   += (e.cxl_accesses * 64.0) / (0.01 * 1e9);
+        st2  += e.tiering_ratio;
+        su   += e.link_utilization_pct;
+        sq   += e.queuing_delay_ns;
+        ta   += e.total_accesses;
+        ca   += e.cxl_accesses;
+        la   += e.local_dram_accesses;
+        mxP99 = std::max(mxP99, e.p99_latency_ns);
     }
     s << "# CXLMemSim 实验报告\n\n";
     s << "**导出时间：** " << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << "  \n";
     s << "**数据区间：** Epoch " << start << " – " << (start+n-1) << "（共 " << n << " 个）\n\n";
-    s << "## 关键指标摘要\n\n| 指标 | 值 |\n|---|---|\n";
-    s << "| 平均访问延迟 | " << QString::number(sl/n,'f',2) << " ns |\n";
-    s << "| P99 延迟峰值 | " << QString::number(mx,  'f',2) << " ns |\n";
-    s << "| 平均带宽     | " << QString::number(sb/n,'f',3) << " GB/s |\n";
-    s << "| CXL Tiering Ratio | " << QString::number(st2/n,'f',1) << "% |\n\n";
-    s << "## Epoch 详情（前 20 条）\n\n";
-    s << "| Epoch | 总访问 | CXL访问 | 均延迟(ns) | P99(ns) | Tiering% | 带宽(GB/s) |\n";
-    s << "|---|---|---|---|---|---|---|\n";
+    s << "## 关键指标摘要\n\n| 指标 | 均值 |\n|---|---|\n";
+    s << "| 平均 CXL 访问延迟 | " << QString::number(sl/n,  'f', 2) << " ns |\n";
+    s << "| 平均 P95 延迟     | " << QString::number(sp95/n,'f', 2) << " ns |\n";
+    s << "| 平均 P99 延迟     | " << QString::number(sp99/n,'f', 2) << " ns |\n";
+    s << "| P99 延迟峰值      | " << QString::number(mxP99, 'f', 2) << " ns |\n";
+    s << "| 排队延迟          | " << QString::number(sq/n,  'f', 2) << " ns |\n";
+    s << "| 平均带宽          | " << QString::number(sb/n,  'f', 3) << " GB/s |\n";
+    s << "| 链路利用率        | " << QString::number(su/n,  'f', 1) << "% |\n";
+    s << "| CXL Tiering Ratio | " << QString::number(st2/n, 'f', 1) << "% |\n";
+    s << "| 本地 DRAM 参考延迟 | "
+      << QString::number(data[start].local_dram_latency_ns, 'f', 1) << " ns |\n";
+    s << "| 累计总访问量      | " << ta << " |\n";
+    s << "| 累计 CXL 访问量   | " << ca << " |\n";
+    s << "| 累计本地 DRAM 访问 | " << la << " |\n\n";
+    s << "## 各 Epoch 详情（前 20 条）\n\n";
+    s << "| Epoch | 总访问 | CXL访问 | 本地DRAM | 均延迟(ns) | P95(ns) | P99(ns) | 排队(ns) | Tiering% | 利用率% | 带宽(GB/s) |\n";
+    s << "|---|---|---|---|---|---|---|---|---|---|---|\n";
     int lim = std::min(n, 20);
     for (int i = start; i < start+lim; ++i) {
         const auto& e = data[i];
-        double bw = (e.total_accesses * 64.0) / (0.01 * 1e9);
-        s << "| " << e.epoch_number << " | " << e.total_accesses
+        double bw = (e.cxl_accesses * 64.0) / (0.01 * 1e9);
+        s << "| " << e.epoch_number
+          << " | " << e.total_accesses
           << " | " << e.cxl_accesses
-          << " | " << QString::number(e.avg_latency_ns,'f',1)
-          << " | " << QString::number(e.p99_latency_ns,'f',1)
-          << " | " << QString::number(e.tiering_ratio,'f',1)
-          << " | " << QString::number(bw,'f',2) << " |\n";
+          << " | " << e.local_dram_accesses
+          << " | " << QString::number(e.avg_latency_ns,      'f', 1)
+          << " | " << QString::number(e.p95_latency_ns,      'f', 1)
+          << " | " << QString::number(e.p99_latency_ns,      'f', 1)
+          << " | " << QString::number(e.queuing_delay_ns,    'f', 1)
+          << " | " << QString::number(e.tiering_ratio,       'f', 1)
+          << " | " << QString::number(e.link_utilization_pct,'f', 1)
+          << " | " << QString::number(bw,                    'f', 2) << " |\n";
     }
-    if (n > 20) s << "\n*（仅显示前 20 条）*\n";
-    s << "\n---\n*由 CXLMemSim 自动生成*\n";
+    if (n > 20) s << "\n*（仅显示前 20 条，完整数据见 CSV 文件）*\n";
+    s << "\n---\n*本报告由 CXLMemSim 自动生成*\n";
     return md;
 }
 
