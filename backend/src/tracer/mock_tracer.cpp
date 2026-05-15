@@ -75,7 +75,8 @@ std::vector<MemoryAccessEvent> MockTracer::collect_samples() {
     }
 
     // Mode 2: Generate random events
-    std::uniform_int_distribution<> count_dist(100, 500);
+    // Scale batch size by thread count so more threads = more traffic
+    std::uniform_int_distribution<> count_dist(100 * num_threads_, 500 * num_threads_);
     int num_samples = count_dist(rng_);
 
     samples.reserve(num_samples);
@@ -140,15 +141,49 @@ MemoryAccessEvent MockTracer::generate_random_event() {
 
     e.timestamp_ns = get_current_timestamp_ns();
 
-    // Generate virtual address within range (cache-line aligned)
-    std::uniform_int_distribution<uint64_t> addr_dist(addr_start_, addr_end_);
-    e.virtual_addr = addr_dist(rng_) & ~0x3F;  // Align to 64 bytes
+    // ── Generate address according to access pattern ──────────────
+    uint64_t range = (addr_end_ > addr_start_) ? (addr_end_ - addr_start_) : 1;
+    switch (access_pattern_) {
+        case AccessPattern::SEQUENTIAL: {
+            // Advance by one cache line each call, wrap around
+            e.virtual_addr = (addr_start_ + sequential_cursor_) & ~0x3F;
+            sequential_cursor_ = (sequential_cursor_ + 64) % range;
+            break;
+        }
+        case AccessPattern::STRIDE: {
+            // Advance by stride_bytes_ each call, wrap around
+            e.virtual_addr = (addr_start_ + sequential_cursor_) & ~0x3F;
+            sequential_cursor_ = (sequential_cursor_ + stride_bytes_) % range;
+            break;
+        }
+        case AccessPattern::MIXED: {
+            // Alternate between sequential and random
+            std::uniform_real_distribution<> coin(0.0, 1.0);
+            if (coin(rng_) < 0.5) {
+                e.virtual_addr = (addr_start_ + sequential_cursor_) & ~0x3F;
+                sequential_cursor_ = (sequential_cursor_ + 64) % range;
+            } else {
+                std::uniform_int_distribution<uint64_t> addr_dist(addr_start_, addr_end_);
+                e.virtual_addr = addr_dist(rng_) & ~0x3F;
+            }
+            break;
+        }
+        case AccessPattern::RANDOM:
+        default: {
+            std::uniform_int_distribution<uint64_t> addr_dist(addr_start_, addr_end_);
+            e.virtual_addr = addr_dist(rng_) & ~0x3F;
+            break;
+        }
+    }
 
     e.tid = target_pid_ > 0 ? target_pid_ : 1234;
     e.cpu = 0;
-    e.is_load = true;
 
-    // Determine if this is an L3 miss
+    // ── Read/Write decision based on read_ratio ───────────────────
+    std::uniform_real_distribution<> rw_dist(0.0, 1.0);
+    e.is_load = (rw_dist(rng_) < read_ratio_);
+
+    // ── L3 miss determination ─────────────────────────────────────
     std::uniform_real_distribution<> miss_dist(0.0, 1.0);
     e.is_l3_miss = (miss_dist(rng_) < l3_miss_rate_);
 

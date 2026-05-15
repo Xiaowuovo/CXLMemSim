@@ -351,7 +351,14 @@ void WorkloadConfigWidget::setWorkloadConfig(const cxlsim::WorkloadConfig& confi
         tracePathEdit_->setText(QString::fromStdString(config.trace_file_path));
     } else {
         syntheticModeBtn_->setChecked(true);
-        patternCombo_->setCurrentIndex(static_cast<int>(config.access_pattern));
+        // 按 userData 匹配，而非直接用 index（combo 顺序与枚举值不一致）
+        int targetVal = static_cast<int>(config.access_pattern);
+        for (int i = 0; i < patternCombo_->count(); ++i) {
+            if (patternCombo_->itemData(i).toInt() == targetVal) {
+                patternCombo_->setCurrentIndex(i);
+                break;
+            }
+        }
         readRatioSpin_->setValue(config.read_ratio);
         injectionRateSpin_->setValue(config.injection_rate_gbps);
         workingSetSpin_->setValue(config.working_set_gb);

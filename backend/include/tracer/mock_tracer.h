@@ -9,6 +9,7 @@
 #pragma once
 
 #include "tracer_interface.h"
+#include "config_parser.h"
 #include <random>
 #include <atomic>
 
@@ -68,6 +69,26 @@ public:
      */
     void set_loop_mode(bool enable) { loop_mode_ = enable; }
 
+    /**
+     * @brief Set read ratio (0.0=all writes, 1.0=all reads)
+     */
+    void set_read_ratio(double ratio) { read_ratio_ = std::clamp(ratio, 0.0, 1.0); }
+
+    /**
+     * @brief Set access pattern (RANDOM/SEQUENTIAL/STRIDE/MIXED)
+     */
+    void set_access_pattern(AccessPattern pattern) { access_pattern_ = pattern; }
+
+    /**
+     * @brief Set stride size in bytes (used when pattern=STRIDE)
+     */
+    void set_stride_bytes(uint64_t bytes) { stride_bytes_ = bytes > 0 ? bytes : 64; }
+
+    /**
+     * @brief Set number of concurrent threads (scales sample batch size)
+     */
+    void set_num_threads(int threads) { num_threads_ = std::max(1, threads); }
+
 private:
     // State
     std::atomic<bool> running_{false};
@@ -84,6 +105,11 @@ private:
     uint64_t avg_latency_ns_{100};
     uint64_t addr_start_{0x1000000};
     uint64_t addr_end_{0x10000000};
+    double read_ratio_{0.7};               ///< fraction of accesses that are reads
+    AccessPattern access_pattern_{AccessPattern::RANDOM};
+    uint64_t stride_bytes_{4096};          ///< stride step size
+    uint64_t sequential_cursor_{0};        ///< current sequential/stride address
+    int num_threads_{1};                   ///< concurrent thread count (scales batch)
 
     // Helper methods
     MemoryAccessEvent generate_random_event();

@@ -817,7 +817,8 @@ void MainWindow::onStartSimulation() {
             miss_rate = std::max(0.05, miss_rate); // 最低 5%
 
             // 平均延迟基于 injection_rate：高注入率 -> 拥塞 -> 延迟更高
-            double base_ns = 150.0;
+            // 同时受 read_ratio 影响：写操作延迟通常更高（write-allocate）
+            double base_ns = 150.0 * (1.0 + (1.0 - wl.read_ratio) * 0.3);
             double congestion_factor = std::min(3.0, wl.injection_rate_gbps / 20.0);
             double avg_latency = base_ns * (1.0 + congestion_factor * 0.5);
 
@@ -828,14 +829,28 @@ void MainWindow::onStartSimulation() {
             uint64_t range = static_cast<uint64_t>(wl.working_set_gb) << 30;
             tracer->set_address_range(base_addr, base_addr + range);
 
+            // 传入用户配置的 read_ratio / access_pattern / stride_bytes / num_threads
+            tracer->set_read_ratio(wl.read_ratio);
+            tracer->set_access_pattern(wl.access_pattern);
+            tracer->set_stride_bytes(wl.stride_bytes);
+            tracer->set_num_threads(wl.num_threads);
+
+            static const char* patternNames[] = {"Sequential", "Random", "Stride", "Mixed"};
+            int patIdx = static_cast<int>(wl.access_pattern);
+            if (patIdx < 0 || patIdx > 3) patIdx = 1;
+
             if (logView_) logView_->append(
-                QString("[INFO] Synthetic 模式: miss_rate=%.1f%%, avg_lat=%.0fns, "
-                        "working_set=%2GB, rate=%.1fGB/s, threads=%3")
+                QString("[INFO] Synthetic 模式: miss_rate=%1%, avg_lat=%2ns, "
+                        "working_set=%3GB, rate=%4GB/s, threads=%5, "
+                        "read_ratio=%6, pattern=%7, stride=%8B")
                 .arg(miss_rate * 100, 0, 'f', 1)
                 .arg(avg_latency, 0, 'f', 0)
                 .arg(wl.working_set_gb)
                 .arg(wl.injection_rate_gbps, 0, 'f', 1)
-                .arg(wl.num_threads));
+                .arg(wl.num_threads)
+                .arg(wl.read_ratio, 0, 'f', 2)
+                .arg(patternNames[patIdx])
+                .arg(wl.stride_bytes));
         }
 
         tracer->initialize(0);
